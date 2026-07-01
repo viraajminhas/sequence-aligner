@@ -7,8 +7,15 @@ const $ = (id) => document.getElementById(id);
 const AUTO_LIMIT = 500000;      // auto-recompute only below this many DP cells
 const AFFINE_LIMIT = 1000000;   // affine allocates 3 tables; cap it
 
+// Two made-up proteins that share one 41-letter "domain" buried inside otherwise
+// different sequence: a case where local alignment shines and global flounders.
+const SHARED_DOMAIN = "GHSMGGLLARYFAQERPDLVKALVLLGAVDPPHELREAFPS";
+const SHARED_A = "MKQLTA" + SHARED_DOMAIN + "RR";
+const SHARED_B = "AADGKLYVSAETRAWNGLMHVCQ" + SHARED_DOMAIN + "TTLHYPAPQWKDNAEFLVRESE";
+
 const EXAMPLES = {
   "Toy DNA":                    { type: "DNA",     s1: SEQS.toy1,       s2: SEQS.toy2,          n1: "toy_1",    n2: "toy_2" },
+  "Shared domain (protein)":    { type: "Protein", s1: SHARED_A,        s2: SHARED_B,           n1: "protein_A",n2: "protein_B" },
   "HBB DNA (human/mouse)":      { type: "DNA",     s1: SEQS.hbbHumanDNA, s2: SEQS.hbbMouseDNA,  n1: "human_HBB",n2: "mouse_HBB" },
   "HBB protein (human/gorilla)":{ type: "Protein", s1: SEQS.hbbHumanAA, s2: SEQS.hbbGorillaAA,  n1: "human",    n2: "gorilla" },
   "HBB protein (human/fish)":   { type: "Protein", s1: SEQS.hbbHumanAA, s2: SEQS.hbbZebrafishAA,n1: "human",    n2: "zebrafish" },
@@ -341,18 +348,29 @@ function runProfileDemo() {
   const good = align(SEQS.hbbHumanDNA, SEQS.hbbMouseDNA, dnaMatrix(1, 1), 2, "global");
   const bad = align(SEQS.hbbHumanDNA, SEQS.hbbMouseDNA, dnaMatrix(2, 2), 0.1, "global");
   const gs = alignmentStats(good), bs = alignmentStats(bad);
-  const cov = (st) => `${(100 * (st.matches + st.mismatches) / st.columns).toFixed(0)}%`;
   const row = (label, g, b) => `<tr><td>${label}</td><td>${g}</td><td>${b}</td></tr>`;
   $("profileOut").innerHTML =
     `<table class="stats">
        <tr><td class="muted">measure (human vs mouse HBB)</td><td class="muted">honest params</td><td class="muted">"identity-gaming" params</td></tr>
-       ${row("percent identity", gs.percentIdentity.toFixed(1) + "%", "<b>" + bs.percentIdentity.toFixed(1) + "%</b>")}
+       ${row("identity, counting gaps (what this tool shows)", gs.percentIdentity.toFixed(1) + "%", bs.percentIdentity.toFixed(1) + "%")}
+       ${row("identity, ignoring gaps (the naive way)", gs.identityAligned.toFixed(1) + "%", "<b>" + bs.identityAligned.toFixed(1) + "%</b>")}
        ${row("number of gaps", gs.numGaps, "<b>" + bs.numGaps + "</b>")}
        ${row("alignment length", gs.columns + " cols", bs.columns + " cols")}
-       ${row("non-gap coverage", cov(gs), "<b>" + cov(bs) + "</b>")}
      </table>
-     <p class="muted" style="margin:8px 0 0">Read alone, identity <i>prefers</i> the second alignment (100%). Read as a
-     profile, the ${bs.numGaps} gaps and ${cov(bs)} coverage expose it as shredded nonsense. No single number is safe.</p>`;
+     <p class="muted" style="margin:8px 0 0">Look at the second alignment: if you <i>ignore gaps</i>, its identity is a
+     perfect <b>${bs.identityAligned.toFixed(0)}%</b>, which looks better than the honest alignment. That is the trap the
+     naive definition falls into. Count the gaps (the row above it) and the same alignment drops to
+     <b>${bs.percentIdentity.toFixed(0)}%</b> because it is riddled with <b>${bs.numGaps}</b> of them. Always read identity
+     next to the gap count.</p>`;
+}
+
+/* ---------- when local beats global: a shared domain in two different proteins ---------- */
+function runLocalVsGlobal() {
+  const g = align(SHARED_A, SHARED_B, MATRICES.BLOSUM62, 11, "global", "protein_A", "protein_B");
+  const l = align(SHARED_A, SHARED_B, MATRICES.BLOSUM62, 11, "local", "protein_A", "protein_B");
+  const box = $("lvgOut"); box.innerHTML = "";
+  box.appendChild(gbCard("Global: forced to line up the whole length", "bad", g));
+  box.appendChild(gbCard("Local: finds just the shared domain", "good", l));
 }
 
 /* ---------- quality demo 3: significance by shuffling ---------- */
@@ -440,6 +458,7 @@ function init() {
   $("btnBad").addEventListener("click", setBad);
   $("btnAlign").addEventListener("click", () => compute(true));
   document.querySelectorAll("[data-demo]").forEach((b) => b.addEventListener("click", () => runGoodBad(b.dataset.demo)));
+  $("localVsGlobal").addEventListener("click", runLocalVsGlobal);
   $("sarsRun").addEventListener("click", runSars);
   $("qualDemo").addEventListener("click", runQualDemo);
   $("profileDemo").addEventListener("click", runProfileDemo);

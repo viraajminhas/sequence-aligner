@@ -12,11 +12,13 @@
 <nav>
   <div class="wrap">
     <div class="brand"><span class="dot"></span> Sequence Aligner</div>
+    <a class="link" href="#primer">Start here</a>
     <a class="link" href="#tool">The tool</a>
     <a class="link" href="#goodbad">Good vs bad</a>
+    <a class="link" href="#localglobal">Local vs global</a>
     <a class="link" href="#dnaprot">DNA vs protein</a>
     <a class="link" href="#quality">Quality</a>
-    <a class="link" href="#gaps">The gap problem</a>
+    <a class="link" href="#glossary">Glossary</a>
   </div>
 </nav>
 
@@ -30,6 +32,34 @@
       and watch the alignment change under your hands.</p>
     <p class="quote">“Change the scoring, and you change the alignment. Which one is right, and how would you know?”</p>
   </header>
+
+  <!-- ================= PRIMER ================= -->
+  <section id="primer">
+    <div class="kicker">New here? Start with this</div>
+    <h2>What is sequence alignment, in plain English?</h2>
+    <div class="card prose">
+      <p><b>Living things store their instructions as long strings of letters.</b> DNA uses 4 letters
+        (A, C, G, T), the chemical "bases" that spell out the double helix. Proteins, the molecular machines that
+        do almost all the work in a cell, are written in 20 letters, one for each <b>amino acid</b> building
+        block. A <b>gene</b> is a stretch of DNA; the cell reads it three letters at a time (each triplet is a
+        <b>codon</b>) and builds the matching protein.</p>
+      <p><b>Aligning two sequences means sliding them past each other to line up the parts that match,</b> adding
+        dashes (<b>gaps</b>) where one has letters the other is missing. Biologists do this because similar
+        sequences usually share a common ancestor. Life copies its DNA to reproduce, copying makes occasional
+        typos (<b>mutations</b>), and over millions of years those changes add up. Line two sequences up and the
+        <b>matches</b> show what stayed the same (often because it is important and evolution could not afford to
+        break it), while the <b>differences</b> show where the two drifted apart. Alignment is how we measure how
+        related two things are, find genes, and spot which mutations actually matter.</p>
+      <p><b>Here is the catch this whole project is about.</b> To line sequences up, a computer first needs numbers:
+        how much is a match worth? how much does a mismatch cost? how much does a gap cost? Change those numbers
+        and you get a different alignment out. This tool hands you those knobs so you can see it happen, and then
+        asks the hard question: if the answer depends on the knobs, how do you know which alignment is right?</p>
+      <p class="muted">Two quick terms you will see below: <b>global</b> alignment lines the sequences up end to
+        end (best when they are the same kind of thing overall); <b>local</b> alignment finds just the single
+        best-matching stretch and ignores the rest (best when they only share a piece). Both are explained with a
+        live example further down.</p>
+    </div>
+  </section>
 
   <!-- ================= THE TOOL ================= -->
   <section id="tool">
@@ -111,25 +141,59 @@
   <section id="goodbad">
     <div class="kicker">The lesson</div>
     <h2>A higher score is not a better alignment</h2>
-    <p class="sub">Drop the gap penalty toward zero and the optimizer discovers it can trade every mismatch
-      for a tiny gap, reaching a <b>higher score and “100% identity”</b> by shredding the biology. It is
-      technically optimal for those parameters and completely wrong.</p>
+    <p class="sub">The tool always returns the <i>highest-scoring</i> alignment for the numbers you set. But
+      "highest-scoring" is not the same as "biologically right." Watch what happens when we make gaps almost
+      free: the computer discovers it can dodge nearly every mismatch by inserting a tiny gap next to it,
+      chopping the alignment into a staircase of dashes. That earns a <b>higher score</b>, yet it is nonsense,
+      no real gene picks up dozens of separate one-letter insertions and deletions.</p>
     <div class="btnrow" style="margin-bottom:16px">
       <button class="btn ghost" data-demo="toy">Toy example</button>
       <button class="btn ghost" data-demo="hbb">Real gene: HBB DNA (human vs mouse)</button>
     </div>
     <div class="compare" id="gbCompare"></div>
-    <p class="note" style="margin-top:16px">Notice the “bad” alignment reports the <b>higher</b> identity. That
-      is the whole point: percent identity, read on its own, rewarded the vandalism, which is exactly why the
-      gap statistics next to it matter.</p>
+    <p class="note" style="margin-top:16px">The "bad" alignment wins on <b>score</b> but loses on every honest
+      readout: its identity is <b>lower</b> and it is stuffed with gaps. That is the takeaway, the raw score is
+      the computer's opinion given your numbers, not a measure of biological truth. (HBB, by the way, is
+      <b>hemoglobin beta</b>, part of the protein that carries oxygen in your blood; it is nearly identical
+      across mammals because a broken oxygen-carrier is not survivable, so evolution keeps it almost frozen.)</p>
+  </section>
+
+  <!-- ================= LOCAL VS GLOBAL ================= -->
+  <section id="localglobal">
+    <div class="kicker">Global vs local</div>
+    <h2>When local alignment wins: a shared piece inside two different sequences</h2>
+    <p class="sub"><b>Global</b> alignment lines two sequences up from start to finish. <b>Local</b> alignment
+      instead hunts for the single best-matching stretch and throws the rest away. That distinction is huge in
+      biology, because two proteins that are mostly unrelated often still share one important part, called a
+      <b>domain</b>: a self-contained working unit, a bit like the same style of handle bolted onto two
+      completely different tools.</p>
+    <p class="sub">Below are two made-up proteins that share a 41-letter domain buried in the middle, with
+      different lengths and different sequence on either side. Global alignment is <i>forced</i> to match the
+      unrelated ends too, so it drags the shared part out of register and produces a gap-riddled mess with a
+      <b>negative</b> score. Local alignment ignores the ends and lifts the shared domain out cleanly at
+      <b>100% identity</b>. Same two sequences, same scoring: the only thing that changed is global versus local.</p>
+    <button class="btn" id="localVsGlobal">Show global vs local ▶</button>
+    <div class="compare" id="lvgOut" style="margin-top:16px"></div>
+    <p class="note" style="margin-top:14px">Rule of thumb: use <b>global</b> when the two sequences should
+      correspond along their whole length (the same gene in two species); use <b>local</b> when you only expect a
+      shared piece (a common domain, a short motif, one region of similarity). This is exactly why
+      <b>BLAST</b>, the most-used search tool in all of biology, is local: it can find the matching piece of a
+      gene even when everything around it is different.</p>
   </section>
 
   <!-- ================= DNA VS PROTEIN ================= -->
   <section id="dnaprot">
     <div class="kicker">DNA vs protein</div>
     <h2>SARS-CoV vs SARS-CoV-2 spike: the synonymous-mutation story</h2>
-    <p class="sub">Align the spike of the 2003 SARS virus and SARS-CoV-2 two ways (as coding DNA, then as the
-      protein it encodes) and ask where they disagree.</p>
+    <p class="sub">The <b>spike</b> is the protein that studs the surface of a coronavirus and lets it break into
+      your cells; it is the part your vaccine trains your immune system to recognize. Here we compare the spike
+      of the original 2003 SARS virus with that of SARS-CoV-2, the COVID-19 virus, two related coronaviruses
+      about two decades apart.</p>
+    <p class="sub">We align the spike two ways: first as <b>coding DNA</b> (the gene, in A/C/G/T), then as the
+      <b>protein</b> it builds (in amino-acid letters). The point is a beautiful quirk of the genetic code: a
+      change in the DNA does not always change the protein. Because most amino acids can be spelled by several
+      codons, a mutation in the third letter of a codon often swaps one spelling for another that means the same
+      amino acid. That is a <b>synonymous</b> ("silent") mutation, visible in the DNA, invisible in the protein.</p>
     <button class="btn" id="sarsRun">Run the analysis ▶</button>
     <div id="sarsOut" class="hidden" style="margin-top:18px">
       <div class="callout" id="sarsCallout"></div>
@@ -147,10 +211,13 @@
       </div>
       <div class="prose" style="margin-top:16px">
         <p>The DNA alignment sees <b>hundreds more differences</b> than the protein does. Most of the codons that
-          differ are <b>synonymous</b> (the DNA changed but the amino acid did not), and those substitutions
-          pile up at the <b>third (“wobble”) codon position</b>, exactly where the genetic code is most
-          degenerate. This is the fingerprint of <b>purifying selection</b>: changes that would alter the
-          protein are weeded out, so the protein stays more conserved than its own gene.</p>
+          differ are <b>synonymous</b> (the DNA changed but the amino acid did not), and those changes pile up at
+          the <b>third letter of the codon</b> (nicknamed the "wobble" position), exactly where the genetic code
+          has the most spare spellings. This is the fingerprint of <b>purifying selection</b>: mutations that
+          <i>would</i> change the protein tend to break it, so the individuals carrying them do worse and those
+          mutations get filtered out of the population over time. Silent mutations pass through freely. The
+          result is that the protein changes more slowly than the gene that encodes it, it stays more
+          <b>conserved</b>.</p>
         <p class="note"><b>The punchline:</b> the DNA alignment counts <i>how much the sequence changed</i>; the
           protein alignment shows <i>how much of that change could actually matter</i>. Synonymous mutations
           are the gap between those two numbers. To find the mutations that matter, align the protein.</p>
@@ -172,20 +239,23 @@
       <p>Take one <b>fixed</b> alignment and rescore it under different parameters. Not a single letter moves,
         yet the number changes; doubling the match reward roughly doubles the score. So a bigger score never
         means a better alignment unless the scoring scheme is held fixed.</p>
-      <p class="muted"><b>Example.</b> The same human vs mouse HBB alignment (83.5% identical, no gaps) scores
-        293 with match&nbsp;1 but 1,773 with match&nbsp;5. Identical biology, six times the number.</p>
+      <p class="muted"><b>Example.</b> The same human vs mouse HBB alignment (about 83% identical, essentially no
+        gaps) scores 293 with match&nbsp;1 but 1,773 with match&nbsp;5. Identical biology, six times the number.</p>
       <button class="btn ghost" id="qualDemo">Show: same alignment, different scores</button>
       <div id="qualOut" style="margin-top:10px"></div>
 
-      <h3>2 &middot; Scale-free descriptors help, but never identity alone</h3>
-      <p>Percent identity, gap count, longest gap, and coverage do not depend on the reward units, so they
-        travel across scoring schemes. But identity by itself is easy to game: you can manufacture a high number
-        by stuffing an alignment with gaps so that no two mismatched residues ever share a column.</p>
-      <p class="muted"><b>Example.</b> The "bad" human/mouse HBB alignment reaches a perfect 100% identity, but
-        only by opening 103 tiny gaps and stretching the alignment from 444 to 507 columns. The honest alignment
-        is 83.5% identity with 2 gaps. Identity, gaps, and coverage together expose the fake; identity alone
-        rewards it.</p>
-      <button class="btn ghost" id="profileDemo">Compare the two quality profiles</button>
+      <h3>2 &middot; Percent identity is useful, but only if you count the gaps</h3>
+      <p><b>Percent identity</b> is the fraction of the lined-up columns that match. It does not depend on the
+        reward units, so it survives changing the scoring, which is good. But there is a subtle trap in how you
+        count it. If you divide only by the columns where both sequences have a letter (ignoring the gap
+        columns), then <b>insertions and deletions become invisible</b>, and you can push identity all the way to
+        100% just by inserting gaps around every mismatch. The honest definition, and the one this tool uses,
+        divides by <i>every</i> column, gaps included, so each indel counts against the score. That is why the
+        "bad" alignments above report a <i>lower</i> identity, not a fake perfect one.</p>
+      <p class="muted"><b>Example.</b> The gap-shredded human/mouse HBB alignment is "100% identical" if you
+        ignore its 103 gaps, but only about 75% identical once you count them. Same alignment, two very different
+        stories. Lesson: never read percent identity without the gap count sitting right next to it.</p>
+      <button class="btn ghost" id="profileDemo">Compare the two ways of counting</button>
       <div id="profileOut" style="margin-top:10px"></div>
 
       <h3>3 &middot; Is it better than chance? (statistical significance)</h3>
@@ -240,10 +310,32 @@
     </div>
   </section>
 
+  <!-- ================= GLOSSARY ================= -->
+  <section id="glossary" class="prose">
+    <div class="kicker">Glossary</div>
+    <h2>Every term on this page, in one line</h2>
+    <div class="card">
+      <dl class="glossary">
+        <dt>Sequence</dt><dd>A long string of letters: DNA (4 letters, A/C/G/T) or protein (20 letters, one per amino acid).</dd>
+        <dt>Gene and codon</dt><dd>A gene is a stretch of DNA that codes for a protein; the cell reads it in 3-letter chunks called codons, one codon per amino acid.</dd>
+        <dt>Alignment</dt><dd>Sliding two sequences against each other to line up matching letters, adding gaps where one has letters the other lacks.</dd>
+        <dt>Match, mismatch, gap</dt><dd>A column where the two letters agree, a column where they disagree, and a column where one sequence has a dash (an inserted or deleted letter).</dd>
+        <dt>Indel (insertion / deletion)</dt><dd>A stretch of letters present in one sequence and missing from the other. It shows up as gaps.</dd>
+        <dt>Global vs local alignment</dt><dd>Global lines the sequences up end to end; local finds only the single best-matching stretch and ignores the rest.</dd>
+        <dt>Substitution matrix (BLOSUM, PAM)</dt><dd>A table of how good or bad every amino-acid swap is, learned from real evolution. Chemically similar swaps barely hurt; drastic ones are penalized.</dd>
+        <dt>Gap penalty (linear vs affine)</dt><dd>How much a gap costs. Linear charges the same per letter; affine charges a big fee to <i>open</i> a gap plus a small fee to <i>extend</i> it, which matches how real indels happen in a single event.</dd>
+        <dt>Score</dt><dd>The one number the aligner maximizes: rewards for matches minus penalties for mismatches and gaps. It depends entirely on the numbers you choose.</dd>
+        <dt>Percent identity</dt><dd>The fraction of aligned columns that match, with gap columns counted against you. A plain measure of similarity.</dd>
+        <dt>E-value</dt><dd>The chance that two random sequences of the same size would score this well by luck. A tiny E-value means the match is almost certainly real, not coincidence.</dd>
+        <dt>Homologous and conserved</dt><dd>Homologous means descended from a common ancestor. Conserved means kept nearly unchanged by evolution, usually because it is functionally important.</dd>
+        <dt>Synonymous vs missense mutation</dt><dd>Synonymous is a DNA change that leaves the amino acid the same (silent); missense is a DNA change that swaps the amino acid.</dd>
+        <dt>Purifying selection</dt><dd>Evolution filtering out harmful mutations, which keeps important sequences conserved over time.</dd>
+      </dl>
+    </div>
+  </section>
+
   <footer>
-    Built on my Module 2 code (<code class="k">globalAlignment.py</code>, <code class="k">localAlignment.py</code>),
-    ported to JavaScript so it runs client-side: no server, no data leaves your browser. Sequences: HBB CDS
-    (NCBI RefSeq), HBB &amp; spike proteins (UniProt / NCBI). Matrices: standard BLOSUM / PAM.
+    Everything runs in your browser; nothing you type is uploaded anywhere.
   </footer>
 
 </main>

@@ -188,15 +188,21 @@ function alignmentStats(res) {
   const [g1n, g1l] = countGaps(top);
   const [g2n, g2l] = countGaps(bottom);
   const aligned = matches + mismatches;
+  const cols = top.length;
   return {
     score: res.score,
-    columns: top.length,
-    percentIdentity: aligned ? (100 * matches / aligned) : 0,
+    columns: cols,
+    // Percent identity counts EVERY column, gaps included: an insertion or deletion
+    // is a non-match, so indels lower identity (this is the BLAST / EMBOSS convention).
+    percentIdentity: cols ? (100 * matches / cols) : 0,
+    // The older "over aligned columns only" number, kept so we can show that
+    // ignoring gaps lets identity be inflated toward 100%.
+    identityAligned: aligned ? (100 * matches / aligned) : 0,
     matches, mismatches,
     numGaps: g1n + g2n,
     gapColumns: gapCols,
     longestGap: Math.max(g1l, g2l),
-    percentGaps: top.length ? (100 * gapCols / top.length) : 0,
+    percentGaps: cols ? (100 * gapCols / cols) : 0,
   };
 }
 
