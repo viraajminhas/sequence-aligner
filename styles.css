@@ -110,8 +110,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .aln { font-family: var(--mono); font-size: 13px; line-height: 1.35; overflow-x: auto; white-space: pre; padding-bottom: 6px; }
 .aln .block { margin-bottom: 10px; }
 .aln .track { color: var(--muted); }
+/* Each track mark gets the SAME box as a residue so | and . sit centered under the letters. */
+.aln .mid { display: inline-block; width: 1ch; padding: 0 .5px; text-align: center; }
 .aln .coord { color: var(--muted); }
-.res { color: #fff; padding: 0 .5px; border-radius: 2px; }
+.res { display: inline-block; width: 1ch; text-align: center; color: #fff; padding: 0 .5px; border-radius: 2px; }
 .res.m { background: var(--match); }
 .res.x { background: var(--mismatch); }
 .res.g { background: var(--gap); }

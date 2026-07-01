@@ -73,12 +73,18 @@
           <span class="muted" style="font-size:12.5px;font-weight:600">Gap model</span><br>
           <div class="seg" id="gapModel"><button data-v="linear" class="active">Linear</button><button data-v="affine">Affine</button></div>
         </div>
-        <div id="affineControls" class="row hidden" style="margin-bottom:14px">
+        <div id="affineControls" class="row hidden" style="margin-bottom:10px">
           <label class="fld slider" style="margin:0"><span>Open <span class="val" id="openV">6</span></span>
             <input type="range" id="open" min="0" max="20" step="1" value="6"></label>
           <label class="fld slider" style="margin:0"><span>Extend <span class="val" id="extendV">1</span></span>
             <input type="range" id="extend" min="0" max="10" step="0.5" value="1"></label>
         </div>
+        <p id="affineHelp" class="note hidden" style="margin:0 0 14px">
+          <b>Affine gap.</b> A gap of length <i>L</i> costs <b>open + extend × (L−1)</b> — a bigger one-time
+          penalty to <i>start</i> a gap, then a small charge per extra base. Because starting a gap is expensive
+          but continuing one is cheap, a single long indel (one mutational event) beats many scattered short
+          gaps. Linear scoring — one flat cost per gap column — can’t make that distinction.
+        </p>
 
         <div class="btnrow">
           <button class="btn good" id="btnGood">Good preset</button>

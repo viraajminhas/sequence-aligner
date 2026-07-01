@@ -55,7 +55,7 @@ function renderAlignment(res, el, { width = 60, maxCols = 600 } = {}) {
       else { cls = "x"; m = "."; }
       t += `<span class="res ${cls}">${x}</span>`;
       b += `<span class="res ${cls}">${y}</span>`;
-      mid += m;
+      mid += `<span class="mid">${m}</span>`;
     }
     html += `<div class="block"><div>${t}<span class="coord">  ${end}</span></div>` +
             `<div class="track">${mid}</div><div>${b}</div></div>`;
@@ -149,6 +149,7 @@ function setGapModel(v) {
   state.gapModel = v;
   [...$("gapModel").children].forEach((c) => c.classList.toggle("active", c.dataset.v === v));
   $("affineControls").classList.toggle("hidden", v !== "affine");
+  $("affineHelp").classList.toggle("hidden", v !== "affine");
 }
 
 function onTypeChange(v, recompute = true) {
