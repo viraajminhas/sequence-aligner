@@ -73,6 +73,7 @@ function renderStats(res, el) {
     ["mismatches", s.mismatches],
     ["gaps", s.numGaps],
     ["longest gap", s.longestGap],
+    ["E-value", '<span id="evalV">…</span>'],
   ];
   el.innerHTML = cells.map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
 }
@@ -80,8 +81,8 @@ function renderStats(res, el) {
 /* ---------- the main compute ---------- */
 function buildResult(p, s1, s2, n1, n2) {
   const sub = p.type === "DNA" ? dnaMatrix(p.match, p.mismatch) : MATRICES[p.matrix];
-  if (p.gapModel === "affine" && p.mode === "global") {
-    return alignAffine(s1, s2, sub, p.open, p.extend, n1, n2);
+  if (p.gapModel === "affine") {
+    return alignAffine(s1, s2, sub, p.open, p.extend, p.mode, n1, n2);
   }
   return align(s1, s2, sub, p.gap, p.mode, n1, n2);
 }
@@ -153,7 +154,40 @@ function compute(force) {
          input looks like DNA, so it was translated (reading frame 1) and the amino-acid sequences were scored
          with ${p.matrix}.${stopNote}</div>`);
     }
+    scheduleEvalue(p, s1, s2, res.score, cells);
   }, 10);
+}
+
+/* ---------- E-value (deferred so the alignment paints first) ---------- */
+const EVAL_MAX_CELLS = 400000;
+let evalGen = 0;
+function scheduleEvalue(p, s1, s2, realScore, cells) {
+  const gen = ++evalGen;
+  const note = $("evalNote");
+  if (cells > EVAL_MAX_CELLS) {
+    const v = $("evalV"); if (v) v.textContent = "n/a";
+    note.innerHTML = `<span class="muted">E-value estimate skipped for very large sequences (it needs many alignments). The E-value is a local-alignment statistic.</span>`;
+    return;
+  }
+  note.innerHTML = `<span class="muted">estimating E-value…</span>`;
+  setTimeout(() => {
+    if (gen !== evalGen) return;   // a newer alignment superseded this one
+    const sub = p.type === "DNA" ? dnaMatrix(p.match, p.mismatch) : MATRICES[p.matrix];
+    const alignScore = p.gapModel === "affine"
+      ? (a, b) => alignAffine(a, b, sub, p.open, p.extend, p.mode).score
+      : (a, b) => align(a, b, sub, p.gap, p.mode).score;
+    const N = Math.max(12, Math.min(120, Math.round(1500000 / cells)));
+    const ev = evalueMonteCarlo(s1, s2, realScore, alignScore, p.mode, N);
+    if (gen !== evalGen) return;
+    const eStr = ev.E <= 1e-300 ? "<1e-300" : ev.E < 1e-4 ? ev.E.toExponential(1) : ev.E.toPrecision(2);
+    const v = $("evalV"); if (v) v.textContent = eStr;
+    const modeNote = p.mode === "local"
+      ? `estimated from ${N} shuffled sequences with an extreme-value fit`
+      : `estimated from ${N} shuffles (normal approximation; the E-value is properly a local statistic, so switch to <b>Local</b> for the standard quantity)`;
+    note.innerHTML = `<b>E-value ${eStr}</b>: the chance that two random sequences of these lengths and letter
+      composition would score this high (about ${ev.z.toFixed(0)}&sigma; above the shuffled mean). ${modeNote}.
+      Smaller means more significant.`;
+  }, 0);
 }
 
 const debounce = (fn, ms = 120) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
