@@ -131,7 +131,6 @@
           <span><b style="background:var(--gap)"></b>gap</span>
         </div>
         <div class="statgrid" id="statgrid"></div>
-        <div id="evalNote" style="margin-top:10px;font-size:12.5px;line-height:1.5"></div>
         <div class="aln" id="result" style="margin-top:14px"></div>
       </div>
     </div>
@@ -230,63 +229,66 @@
     <div class="kicker">The central question</div>
     <h2>So how do you quantify alignment quality?</h2>
     <p class="sub">If the score itself moves with the parameters, what do you trust instead? The score is only
-      the optimizer's objective, not a measure of truth. "Quality" asks a different question: did the alignment
-      recover the real evolutionary or structural correspondence between the two sequences? Here are five checks,
-      each grounded in biology, and most of them run right here.</p>
+      the computer's objective given your numbers, not a measure of truth. "Quality" asks a different question:
+      did the alignment recover the real biological correspondence between the two sequences? Judge it by these,
+      not by the score:</p>
     <div class="card">
-
-      <h3>1 &middot; The raw score is not comparable across settings</h3>
-      <p>Take one <b>fixed</b> alignment and rescore it under different parameters. Not a single letter moves,
-        yet the number changes; doubling the match reward roughly doubles the score. So a bigger score never
-        means a better alignment unless the scoring scheme is held fixed.</p>
-      <p class="muted"><b>Example.</b> The same human vs mouse HBB alignment (about 83% identical, essentially no
-        gaps) scores 293 with match&nbsp;1 but 1,773 with match&nbsp;5. Identical biology, six times the number.</p>
-      <button class="btn ghost" id="qualDemo">Show: same alignment, different scores</button>
-      <div id="qualOut" style="margin-top:10px"></div>
-
-      <h3>2 &middot; Percent identity is useful, but only if you count the gaps</h3>
-      <p><b>Percent identity</b> is the fraction of the lined-up columns that match. It does not depend on the
-        reward units, so it survives changing the scoring, which is good. But there is a subtle trap in how you
-        count it. If you divide only by the columns where both sequences have a letter (ignoring the gap
-        columns), then <b>insertions and deletions become invisible</b>, and you can push identity all the way to
-        100% just by inserting gaps around every mismatch. The honest definition, and the one this tool uses,
-        divides by <i>every</i> column, gaps included, so each indel counts against the score. That is why the
-        "bad" alignments above report a <i>lower</i> identity, not a fake perfect one.</p>
-      <p class="muted"><b>Example.</b> The gap-shredded human/mouse HBB alignment is "100% identical" if you
-        ignore its 103 gaps, but only about 75% identical once you count them. Same alignment, two very different
-        stories. Lesson: never read percent identity without the gap count sitting right next to it.</p>
-      <button class="btn ghost" id="profileDemo">Compare the two ways of counting</button>
-      <div id="profileOut" style="margin-top:10px"></div>
-
-      <h3>3 &middot; Is it better than chance? (statistical significance)</h3>
-      <p>A real alignment should score far above what random sequences of the same length and composition can
-        reach. Shuffle one sequence many times, align each shuffle, and measure how many standard deviations the
-        real score sits above that null distribution. This is the reasoning behind BLAST's E-value: the question
-        is not "is the number big?" but "could this have happened by chance?"</p>
-      <button class="btn ghost" id="shuffleDemo">Run the shuffle test (human vs zebrafish HBB)</button>
-      <div id="shuffleOut" style="margin-top:10px"></div>
-
-      <h3>4 &middot; Does it respect the reading frame? (coding DNA)</h3>
-      <p>Real insertions and deletions in a protein-coding gene almost always come in multiples of three,
-        because a length change that is not a multiple of three shifts the reading frame and scrambles every
-        downstream codon. An alignment of coding DNA littered with 1- and 2-base gaps is almost certainly a
-        scoring artifact, however high it scores.</p>
-      <p class="muted"><b>Example.</b> In the SARS spike the two genes differ in length by 18 amino acids, which
-        is exactly 54 nucleotides: an in-frame indel, precisely what selection on a functional protein predicts.</p>
-
-      <h3>5 &middot; Does it agree with biology you did not score for?</h3>
-      <p>The strongest test is external agreement. Conserved motifs, catalytic residues, and cysteines that pair
-        into disulfide bonds should line up; the alignment should match a structure-based superposition or a
-        curated reference. None of that information is in the scoring, so agreement is genuine evidence.</p>
-      <p class="muted"><b>Example.</b> In the spike alignment the C-terminal
-        <code class="k">...KFDEDDSEPVLKGVKLHYT</code> lines up perfectly in both viruses. The aligner was never
-        told this region is conserved; it recovered a real biological anchor on its own.</p>
-
-      <p class="note"><b>Bottom line.</b> There is no parameter-free definition of alignment quality, because
-        alignment is inference (a hypothesis about shared ancestry), not measurement. The parameters <i>are</i>
-        your evolutionary model: how often substitutions happen versus indels. A good alignment is one whose
+      <ul class="checks">
+        <li><b>The raw score is not comparable across settings.</b>
+          <ul>
+            <li>Rescore one fixed alignment under different parameters and the number changes even though not a
+              single letter moved (doubling the match reward roughly doubles the score).</li>
+            <li>A bigger score means something only if the scoring scheme is held fixed.</li>
+            <li><span class="muted">Example: the same human vs mouse HBB alignment (about 83% identical, no gaps)
+              scores 293 with match&nbsp;1 but 1,773 with match&nbsp;5. Same biology, six times the number.</span></li>
+          </ul>
+          <div style="margin:10px 0 0">
+            <button class="btn ghost" id="qualDemo">Show: same alignment, different scores</button>
+            <div id="qualOut" style="margin-top:10px"></div>
+          </div>
+        </li>
+        <li><b>Percent identity is useful, but only if you count the gaps.</b>
+          <ul>
+            <li>Identity is the fraction of lined-up columns that match. It survives changing the scoring, which
+              is good.</li>
+            <li>The trap: divide by only the columns where both sequences have a letter, and insertions and
+              deletions become invisible, so you can fake 100% by inserting a gap next to every mismatch.</li>
+            <li>The honest count (and the one this tool uses) divides by <i>every</i> column, gaps included, so
+              each indel counts against you. Always read identity next to the gap count.</li>
+            <li><span class="muted">Example: the gap-shredded human/mouse HBB alignment is "100% identical" if you
+              ignore its 103 gaps, but only about 75% once you count them.</span></li>
+          </ul>
+          <div style="margin:10px 0 0">
+            <button class="btn ghost" id="profileDemo">Compare the two ways of counting</button>
+            <div id="profileOut" style="margin-top:10px"></div>
+          </div>
+        </li>
+        <li><b>Respect the reading frame (for coding DNA).</b>
+          <ul>
+            <li>Real insertions and deletions in a gene come in multiples of three; any other length shifts the
+              reading frame and scrambles every downstream codon.</li>
+            <li>An alignment of coding DNA littered with 1- and 2-base gaps is almost certainly a scoring
+              artifact, however high it scores.</li>
+            <li><span class="muted">Example: in the SARS spike the two genes differ by 18 amino acids, exactly 54
+              nucleotides, an in-frame indel.</span></li>
+          </ul>
+        </li>
+        <li><b>Agree with biology you did not score for.</b>
+          <ul>
+            <li>Conserved motifs, active-site residues, and cysteines that pair into disulfide bonds should line
+              up; the alignment should match a 3-D structure or a curated reference.</li>
+            <li>None of that is in the scoring, so agreement is real, independent evidence.</li>
+            <li><span class="muted">Example: in the spike alignment the C-terminal
+              <code class="k">...KFDEDDSEPVLKGVKLHYT</code> lines up perfectly in both viruses, a biological
+              anchor the aligner recovered on its own.</span></li>
+          </ul>
+        </li>
+      </ul>
+      <p class="note"><b>Bottom line.</b> There is no parameter-free definition of alignment quality, because an
+        alignment is a hypothesis about shared ancestry, not a measurement. The parameters <i>are</i> your model
+        of how evolution works (how often substitutions happen versus indels). A good alignment is one whose
         model fits the sequences and whose result survives the checks above; the score only tells you it was
-        optimal for the model you chose. Quality is whether you chose the right model.</p>
+        optimal for the model you chose.</p>
     </div>
   </section>
 
@@ -326,7 +328,6 @@
         <dt>Gap penalty (linear vs affine)</dt><dd>How much a gap costs. Linear charges the same per letter; affine charges a big fee to <i>open</i> a gap plus a small fee to <i>extend</i> it, which matches how real indels happen in a single event.</dd>
         <dt>Score</dt><dd>The one number the aligner maximizes: rewards for matches minus penalties for mismatches and gaps. It depends entirely on the numbers you choose.</dd>
         <dt>Percent identity</dt><dd>The fraction of aligned columns that match, with gap columns counted against you. A plain measure of similarity.</dd>
-        <dt>E-value</dt><dd>The chance that two random sequences of the same size would score this well by luck. A tiny E-value means the match is almost certainly real, not coincidence.</dd>
         <dt>Homologous and conserved</dt><dd>Homologous means descended from a common ancestor. Conserved means kept nearly unchanged by evolution, usually because it is functionally important.</dd>
         <dt>Synonymous vs missense mutation</dt><dd>Synonymous is a DNA change that leaves the amino acid the same (silent); missense is a DNA change that swaps the amino acid.</dd>
         <dt>Purifying selection</dt><dd>Evolution filtering out harmful mutations, which keeps important sequences conserved over time.</dd>

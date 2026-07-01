@@ -80,7 +80,6 @@ function renderStats(res, el) {
     ["mismatches", s.mismatches],
     ["gaps", s.numGaps],
     ["longest gap", s.longestGap],
-    ["E-value", '<span id="evalV">…</span>'],
   ];
   el.innerHTML = cells.map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
 }
@@ -161,40 +160,7 @@ function compute(force) {
          input looks like DNA, so it was translated (reading frame 1) and the amino-acid sequences were scored
          with ${p.matrix}.${stopNote}</div>`);
     }
-    scheduleEvalue(p, s1, s2, res.score, cells);
   }, 10);
-}
-
-/* ---------- E-value (deferred so the alignment paints first) ---------- */
-const EVAL_MAX_CELLS = 400000;
-let evalGen = 0;
-function scheduleEvalue(p, s1, s2, realScore, cells) {
-  const gen = ++evalGen;
-  const note = $("evalNote");
-  if (cells > EVAL_MAX_CELLS) {
-    const v = $("evalV"); if (v) v.textContent = "n/a";
-    note.innerHTML = `<span class="muted">E-value estimate skipped for very large sequences (it needs many alignments). The E-value is a local-alignment statistic.</span>`;
-    return;
-  }
-  note.innerHTML = `<span class="muted">estimating E-value…</span>`;
-  setTimeout(() => {
-    if (gen !== evalGen) return;   // a newer alignment superseded this one
-    const sub = p.type === "DNA" ? dnaMatrix(p.match, p.mismatch) : MATRICES[p.matrix];
-    const alignScore = p.gapModel === "affine"
-      ? (a, b) => alignAffine(a, b, sub, p.open, p.extend, p.mode).score
-      : (a, b) => align(a, b, sub, p.gap, p.mode).score;
-    const N = Math.max(12, Math.min(120, Math.round(1500000 / cells)));
-    const ev = evalueMonteCarlo(s1, s2, realScore, alignScore, p.mode, N);
-    if (gen !== evalGen) return;
-    const eStr = ev.E <= 1e-300 ? "<1e-300" : ev.E < 1e-4 ? ev.E.toExponential(1) : ev.E.toPrecision(2);
-    const v = $("evalV"); if (v) v.textContent = eStr;
-    const modeNote = p.mode === "local"
-      ? `estimated from ${N} shuffled sequences with an extreme-value fit`
-      : `estimated from ${N} shuffles (normal approximation; the E-value is properly a local statistic, so switch to <b>Local</b> for the standard quantity)`;
-    note.innerHTML = `<b>E-value ${eStr}</b>: the chance that two random sequences of these lengths and letter
-      composition would score this high (about ${ev.z.toFixed(0)}&sigma; above the shuffled mean). ${modeNote}.
-      Smaller means more significant.`;
-  }, 0);
 }
 
 const debounce = (fn, ms = 120) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
@@ -373,48 +339,6 @@ function runLocalVsGlobal() {
   box.appendChild(gbCard("Local: finds just the shared domain", "good", l));
 }
 
-/* ---------- quality demo 3: significance by shuffling ---------- */
-function runShuffleDemo() {
-  $("shuffleOut").innerHTML = `<span class="muted">Shuffling…</span>`;
-  setTimeout(() => {
-    const human = cleanSeq(SEQS.hbbHumanAA, "Protein");
-    const real = align(human, cleanSeq(SEQS.hbbZebrafishAA, "Protein"), MATRICES.BLOSUM62, 11, "global").score;
-    const chars = [...cleanSeq(SEQS.hbbZebrafishAA, "Protein")];
-    const nullScores = [];
-    for (let i = 0; i < 120; i++) {
-      for (let k = chars.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [chars[k], chars[j]] = [chars[j], chars[k]]; }
-      nullScores.push(align(human, chars.join(""), MATRICES.BLOSUM62, 11, "global").score);
-    }
-    const mu = nullScores.reduce((a, b) => a + b, 0) / nullScores.length;
-    const sd = Math.sqrt(nullScores.reduce((a, b) => a + (b - mu) ** 2, 0) / nullScores.length);
-    const z = (real - mu) / sd;
-
-    // histogram
-    const lo = Math.min(...nullScores), hi = Math.max(real, ...nullScores);
-    const span = (hi - lo) || 1, nb = 26, bins = new Array(nb).fill(0);
-    for (const s of nullScores) bins[Math.min(nb - 1, Math.floor((s - lo) / span * nb))]++;
-    const maxB = Math.max(...bins);
-    const W = 560, H = 120, bw = W / nb;
-    let bars = "";
-    for (let i = 0; i < nb; i++) { const h = bins[i] / maxB * (H - 20); bars += `<rect x="${(i * bw).toFixed(1)}" y="${(H - h).toFixed(1)}" width="${(bw - 1).toFixed(1)}" height="${h.toFixed(1)}" fill="var(--gap)"/>`; }
-    const realX = (real - lo) / span * W;
-    const svg = `<svg viewBox="0 0 ${W} ${H + 22}" width="100%" style="max-width:${W}px">${bars}
-      <line x1="${realX.toFixed(1)}" y1="0" x2="${realX.toFixed(1)}" y2="${H}" stroke="var(--mismatch)" stroke-width="2"/>
-      <text x="${Math.min(realX, W - 60).toFixed(1)}" y="${H + 16}" fill="var(--mismatch)" font-size="12" font-family="sans-serif">real: ${real.toFixed(0)}</text>
-      <text x="0" y="${H + 16}" fill="var(--muted)" font-size="12" font-family="sans-serif">shuffled scores</text></svg>`;
-
-    const stat = (k, v) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`;
-    $("shuffleOut").innerHTML =
-      `<div class="statgrid" style="grid-template-columns:repeat(4,1fr);margin-bottom:10px">
-         ${stat("real score", real.toFixed(0))}${stat("shuffled mean", mu.toFixed(0))}${stat("std dev", sd.toFixed(0))}${stat("z-score", z.toFixed(0) + "σ")}
-       </div>${svg}
-       <p class="muted" style="margin:8px 0 0">The real alignment sits about <b>${z.toFixed(0)} standard deviations</b>
-       above what random sequences of the same amino-acid composition score. A z-score that large means the match is
-       essentially impossible by chance, so the homology is real. (This is the logic behind BLAST's E-value.)</p>`;
-    $("shuffleDemo").textContent = "Run the shuffle test again";
-  }, 20);
-}
-
 /* ---------- gap tie demo ---------- */
 function runGapDemo() {
   const blockTop = "AAAAAAAAAA", blockBot = "AAAA------";
@@ -462,7 +386,6 @@ function init() {
   $("sarsRun").addEventListener("click", runSars);
   $("qualDemo").addEventListener("click", runQualDemo);
   $("profileDemo").addEventListener("click", runProfileDemo);
-  $("shuffleDemo").addEventListener("click", runShuffleDemo);
   $("gapDemo").addEventListener("click", runGapDemo);
 
   syncLabels();
