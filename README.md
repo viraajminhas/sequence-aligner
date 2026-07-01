@@ -48,6 +48,27 @@ python -m http.server 8123
 | `aligner.js` | The engine: global/local + affine alignment, readouts, translation (ported from my `globalAlignment.py` / `localAlignment.py`) |
 | `data.js` | Substitution matrices (BLOSUM/PAM) and embedded example sequences |
 | `app.js` | UI wiring, rendering, the good/bad and SARS analyses |
+| `python/` | The original Python implementation + the Colab notebook this app is based on |
+
+## The Python module &amp; notebook (`python/`)
+
+The web app is a JavaScript port of the Python code I wrote for the module. That original code lives in
+[`python/`](python/):
+
+- **`python/Sequence_Aligner.ipynb`** — the full Colab notebook (the primary Module 2 deliverable). It runs
+  the actual `.py` files below, adds an `ipywidgets` app, the good-vs-bad demos, the SARS DNA-vs-protein
+  synonymous analysis, the quality-question write-up, and the affine-gap + Biopython stretches. GitHub renders
+  it inline with all outputs and figures. To run it live: open it in
+  [Google Colab](https://colab.research.google.com) and **Runtime → Run all** (everything is self-contained).
+- **The module** — `globalAlignment.py`, `globalAlignmentScore.py`, `localAlignment.py`,
+  `localAlignmentScore.py` (the core aligners), plus `io_python.py`, `editDistance*.py`, `lcs*.py`, and
+  `main.py`. Run the module from the `python/` directory:
+  ```bash
+  cd python
+  python main.py
+  ```
+- **`python/Data/`** — the FASTA inputs (HBB CDS/protein, SARS spike CDS/protein, SARS genomes).
+- **`python/Output/`** — sample alignment outputs produced by `main.py`.
 
 ## Correctness
 

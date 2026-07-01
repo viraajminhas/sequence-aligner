@@ -5,5 +5,9 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Python
+__pycache__/
+*.pyc
+
 # Node (not used, but just in case)
 node_modules/
