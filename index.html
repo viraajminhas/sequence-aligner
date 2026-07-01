@@ -38,26 +38,24 @@
     <div class="kicker">New here? Start with this</div>
     <h2>What is sequence alignment, in plain English?</h2>
     <div class="card prose">
-      <p><b>Living things store their instructions as long strings of letters.</b> DNA uses 4 letters
-        (A, C, G, T), the chemical "bases" that spell out the double helix. Proteins, the molecular machines that
-        do almost all the work in a cell, are written in 20 letters, one for each <b>amino acid</b> building
-        block. A <b>gene</b> is a stretch of DNA; the cell reads it three letters at a time (each triplet is a
-        <b>codon</b>) and builds the matching protein.</p>
-      <p><b>Aligning two sequences means sliding them past each other to line up the parts that match,</b> adding
-        dashes (<b>gaps</b>) where one has letters the other is missing. Biologists do this because similar
-        sequences usually share a common ancestor. Life copies its DNA to reproduce, copying makes occasional
-        typos (<b>mutations</b>), and over millions of years those changes add up. Line two sequences up and the
-        <b>matches</b> show what stayed the same (often because it is important and evolution could not afford to
-        break it), while the <b>differences</b> show where the two drifted apart. Alignment is how we measure how
-        related two things are, find genes, and spot which mutations actually matter.</p>
-      <p><b>Here is the catch this whole project is about.</b> To line sequences up, a computer first needs numbers:
-        how much is a match worth? how much does a mismatch cost? how much does a gap cost? Change those numbers
-        and you get a different alignment out. This tool hands you those knobs so you can see it happen, and then
-        asks the hard question: if the answer depends on the knobs, how do you know which alignment is right?</p>
-      <p class="muted">Two quick terms you will see below: <b>global</b> alignment lines the sequences up end to
-        end (best when they are the same kind of thing overall); <b>local</b> alignment finds just the single
-        best-matching stretch and ignores the rest (best when they only share a piece). Both are explained with a
-        live example further down.</p>
+      <ul class="blist">
+        <li><b>Sequences are long strings of letters.</b> DNA uses 4 (A, C, G, T), the chemical bases of the
+          double helix. Proteins use 20, one per <b>amino acid</b>, the building blocks a cell folds into working
+          machines.</li>
+        <li><b>A gene is a stretch of DNA.</b> The cell reads it three letters at a time (each triplet is a
+          <b>codon</b>) and builds the matching protein.</li>
+        <li><b>Aligning = sliding two sequences to line up the parts that match,</b> adding dashes (<b>gaps</b>)
+          where one has letters the other is missing.</li>
+        <li><b>Why we do it:</b> similar sequences usually share a common ancestor. Copying DNA makes occasional
+          typos (<b>mutations</b>) that pile up over time.</li>
+        <li><b>What it tells us:</b> matches show what stayed the same (often because it matters and evolution
+          could not afford to break it); differences show where the two drifted apart.</li>
+        <li><b>The catch this whole project is about:</b> to line sequences up, a computer needs numbers, how much
+          a match is worth, a mismatch costs, a gap costs. Change the numbers and you get a different alignment.</li>
+        <li><b>Two terms used below:</b> <b>global</b> lines sequences up end to end (best when they are the same
+          thing overall); <b>local</b> finds just the single best-matching stretch (best when they share only a
+          piece).</li>
+      </ul>
     </div>
   </section>
 
@@ -140,60 +138,73 @@
   <section id="goodbad">
     <div class="kicker">The lesson</div>
     <h2>A higher score is not a better alignment</h2>
-    <p class="sub">The tool always returns the <i>highest-scoring</i> alignment for the numbers you set. But
-      "highest-scoring" is not the same as "biologically right." Watch what happens when we make gaps almost
-      free: the computer discovers it can dodge nearly every mismatch by inserting a tiny gap next to it,
-      chopping the alignment into a staircase of dashes. That earns a <b>higher score</b>, yet it is nonsense,
-      no real gene picks up dozens of separate one-letter insertions and deletions.</p>
-    <div class="btnrow" style="margin-bottom:16px">
+    <ul class="blist">
+      <li>The tool always returns the <i>highest-scoring</i> alignment for your numbers, but "highest-scoring" is
+        not the same as "biologically right."</li>
+      <li>Make gaps almost free and the computer dodges nearly every mismatch by inserting a tiny gap next to it,
+        chopping the alignment into a staircase of dashes.</li>
+      <li>That earns a <b>higher score</b>, yet it is nonsense: no real gene picks up dozens of separate
+        one-letter insertions and deletions.</li>
+    </ul>
+    <div class="btnrow" style="margin:16px 0">
       <button class="btn ghost" data-demo="toy">Toy example</button>
       <button class="btn ghost" data-demo="hbb">Real gene: HBB DNA (human vs mouse)</button>
     </div>
     <div class="compare" id="gbCompare"></div>
-    <p class="note" style="margin-top:16px">The "bad" alignment wins on <b>score</b> but loses on every honest
-      readout: its identity is <b>lower</b> and it is stuffed with gaps. That is the takeaway, the raw score is
-      the computer's opinion given your numbers, not a measure of biological truth. (HBB, by the way, is
-      <b>hemoglobin beta</b>, part of the protein that carries oxygen in your blood; it is nearly identical
-      across mammals because a broken oxygen-carrier is not survivable, so evolution keeps it almost frozen.)</p>
+    <ul class="blist" style="margin-top:16px">
+      <li>The "bad" alignment wins on <b>score</b> but loses on every honest readout: <b>lower</b> identity, and
+        stuffed with gaps.</li>
+      <li><b>Takeaway:</b> the raw score is the computer's opinion given your numbers, not a measure of
+        biological truth.</li>
+      <li><span class="muted">HBB is <b>hemoglobin beta</b>, part of the protein that carries oxygen in your
+        blood. It is nearly identical across mammals because a broken oxygen carrier is not survivable, so
+        evolution keeps it almost frozen.</span></li>
+    </ul>
   </section>
 
   <!-- ================= LOCAL VS GLOBAL ================= -->
   <section id="localglobal">
     <div class="kicker">Global vs local</div>
     <h2>When local alignment wins: a shared piece inside two different sequences</h2>
-    <p class="sub"><b>Global</b> alignment lines two sequences up from start to finish. <b>Local</b> alignment
-      instead hunts for the single best-matching stretch and throws the rest away. That distinction is huge in
-      biology, because two proteins that are mostly unrelated often still share one important part, called a
-      <b>domain</b>: a self-contained working unit, a bit like the same style of handle bolted onto two
-      completely different tools.</p>
-    <p class="sub">Below are two made-up proteins that share a 41-letter domain buried in the middle, with
-      different lengths and different sequence on either side. Global alignment is <i>forced</i> to match the
-      unrelated ends too, so it drags the shared part out of register and produces a gap-riddled mess with a
-      <b>negative</b> score. Local alignment ignores the ends and lifts the shared domain out cleanly at
-      <b>100% identity</b>. Same two sequences, same scoring: the only thing that changed is global versus local.</p>
-    <button class="btn" id="localVsGlobal">Show global vs local ▶</button>
+    <ul class="blist">
+      <li><b>Global</b> lines two sequences up from start to finish; <b>local</b> hunts for the single
+        best-matching stretch and throws the rest away.</li>
+      <li>This matters because two mostly-unrelated proteins often still share one important part, a
+        <b>domain</b>: a self-contained working unit, like the same handle bolted onto two different tools.</li>
+      <li>Below: two made-up proteins share a 41-letter domain buried in the middle, with different lengths and
+        different sequence on either side.</li>
+      <li><b>Global</b> is forced to match the unrelated ends too, so it drags the shared part out of register:
+        a gap-riddled mess with a <b>negative</b> score.</li>
+      <li><b>Local</b> ignores the ends and lifts the shared domain out cleanly at <b>100% identity</b>. Same
+        sequences, same scoring; only global versus local changed.</li>
+    </ul>
+    <button class="btn" id="localVsGlobal" style="margin-top:16px">Show global vs local ▶</button>
     <div class="compare" id="lvgOut" style="margin-top:16px"></div>
-    <p class="note" style="margin-top:14px">Rule of thumb: use <b>global</b> when the two sequences should
-      correspond along their whole length (the same gene in two species); use <b>local</b> when you only expect a
-      shared piece (a common domain, a short motif, one region of similarity). This is exactly why
-      <b>BLAST</b>, the most-used search tool in all of biology, is local: it can find the matching piece of a
-      gene even when everything around it is different.</p>
+    <ul class="blist" style="margin-top:14px">
+      <li><b>Rule of thumb:</b> use <b>global</b> when the sequences should correspond along their whole length
+        (the same gene in two species); use <b>local</b> when you only expect a shared piece (a domain, a motif,
+        one region of similarity).</li>
+      <li>This is why <b>BLAST</b>, the most-used search tool in biology, is local: it finds the matching piece of
+        a gene even when everything around it is different.</li>
+    </ul>
   </section>
 
   <!-- ================= DNA VS PROTEIN ================= -->
   <section id="dnaprot">
     <div class="kicker">DNA vs protein</div>
     <h2>SARS-CoV vs SARS-CoV-2 spike: the synonymous-mutation story</h2>
-    <p class="sub">The <b>spike</b> is the protein that studs the surface of a coronavirus and lets it break into
-      your cells; it is the part your vaccine trains your immune system to recognize. Here we compare the spike
-      of the original 2003 SARS virus with that of SARS-CoV-2, the COVID-19 virus, two related coronaviruses
-      about two decades apart.</p>
-    <p class="sub">We align the spike two ways: first as <b>coding DNA</b> (the gene, in A/C/G/T), then as the
-      <b>protein</b> it builds (in amino-acid letters). The point is a beautiful quirk of the genetic code: a
-      change in the DNA does not always change the protein. Because most amino acids can be spelled by several
-      codons, a mutation in the third letter of a codon often swaps one spelling for another that means the same
-      amino acid. That is a <b>synonymous</b> ("silent") mutation, visible in the DNA, invisible in the protein.</p>
-    <button class="btn" id="sarsRun">Run the analysis ▶</button>
+    <ul class="blist">
+      <li>The <b>spike</b> is the protein studding a coronavirus that lets it break into your cells; it is the
+        part your vaccine trains your immune system to recognize.</li>
+      <li>We compare the spike of the original 2003 SARS virus with SARS-CoV-2 (the COVID-19 virus), two related
+        coronaviruses about two decades apart.</li>
+      <li>We align it two ways: as <b>coding DNA</b> (the gene, in A/C/G/T), then as the <b>protein</b> it builds
+        (in amino-acid letters).</li>
+      <li>The key quirk: a change in the DNA does not always change the protein. Most amino acids can be spelled
+        by several codons, so a mutation in a codon's third letter often keeps the same amino acid.</li>
+      <li>That is a <b>synonymous</b> ("silent") mutation: visible in the DNA, invisible in the protein.</li>
+    </ul>
+    <button class="btn" id="sarsRun" style="margin-top:16px">Run the analysis ▶</button>
     <div id="sarsOut" class="hidden" style="margin-top:18px">
       <div class="callout" id="sarsCallout"></div>
       <div class="card" style="margin-top:6px">
@@ -209,14 +220,17 @@
         </div>
       </div>
       <div class="prose" style="margin-top:16px">
-        <p>The DNA alignment sees <b>hundreds more differences</b> than the protein does. Most of the codons that
-          differ are <b>synonymous</b> (the DNA changed but the amino acid did not), and those changes pile up at
-          the <b>third letter of the codon</b> (nicknamed the "wobble" position), exactly where the genetic code
-          has the most spare spellings. This is the fingerprint of <b>purifying selection</b>: mutations that
-          <i>would</i> change the protein tend to break it, so the individuals carrying them do worse and those
-          mutations get filtered out of the population over time. Silent mutations pass through freely. The
-          result is that the protein changes more slowly than the gene that encodes it, it stays more
-          <b>conserved</b>.</p>
+        <ul class="blist">
+          <li>The DNA alignment sees <b>hundreds more differences</b> than the protein does.</li>
+          <li>Most of the codons that differ are <b>synonymous</b> (the DNA changed but the amino acid did not).</li>
+          <li>Those changes pile up at the <b>third letter of the codon</b> (the "wobble" position), exactly where
+            the genetic code has the most spare spellings.</li>
+          <li>This is the fingerprint of <b>purifying selection</b>: mutations that <i>would</i> change the protein
+            tend to break it, so carriers do worse and those mutations get filtered out over time; silent ones
+            pass through freely.</li>
+          <li>Result: the protein changes more slowly than the gene that encodes it, it stays more
+            <b>conserved</b>.</li>
+        </ul>
         <p class="note"><b>The punchline:</b> the DNA alignment counts <i>how much the sequence changed</i>; the
           protein alignment shows <i>how much of that change could actually matter</i>. Synonymous mutations
           are the gap between those two numbers. To find the mutations that matter, align the protein.</p>
@@ -299,16 +313,21 @@
     <p class="sub">Try to find one gap penalty that both allows a single long, realistic indel and discourages
       lots of scattered short gaps. You cannot, and here is the proof.</p>
     <div class="card">
-      <p>My gap scoring is <b>linear</b>: a gap of length <i>L</i> costs <i>g × L</i>. So one gap of length 6
-        costs exactly the same as three scattered gaps of length 2. The scoring only sees <i>total gap
-        length</i>, so it is blind to whether gaps are one event or scattered. Watch the tie:</p>
-      <button class="btn ghost" id="gapDemo">Prove the tie (10 A’s vs 4 A’s)</button>
+      <ul class="blist">
+        <li>Standard gap scoring is <b>linear</b>: a gap of length <i>L</i> costs <i>g × L</i>.</li>
+        <li>So one gap of length 6 costs exactly the same as three scattered gaps of length 2. The scoring only
+          sees <i>total gap length</i>, blind to whether gaps are one event or scattered.</li>
+      </ul>
+      <button class="btn ghost" id="gapDemo" style="margin-top:12px">Prove the tie (10 A’s vs 4 A’s)</button>
       <div id="gapOut" style="margin-top:10px"></div>
-      <p style="margin-top:14px">Biology disagrees: a single 6-base indel is <b>one</b> mutational event, far
-        likelier than six independent single-base indels. The fix is <b>affine</b> gaps: a big one-time
-        <b>open</b> penalty plus a small <b>extend</b> penalty per extra base, so one long gap pays <i>open</i>
-        once while many short gaps each pay it. Flip the tool’s <b>gap model to Affine</b> and re-run the “bad”
-        presets to feel the difference.</p>
+      <ul class="blist" style="margin-top:14px">
+        <li>Biology disagrees: a single 6-base indel is <b>one</b> mutational event, far likelier than six
+          independent single-base indels.</li>
+        <li>The fix is <b>affine</b> gaps: a big one-time <b>open</b> penalty plus a small <b>extend</b> penalty
+          per extra base, so one long gap pays <i>open</i> once while many short gaps each pay it.</li>
+        <li>Try it: flip the tool's <b>gap model to Affine</b> and re-run the "bad" presets to feel the
+          difference.</li>
+      </ul>
     </div>
   </section>
 
