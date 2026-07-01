@@ -1,5 +1,5 @@
 /* ============================================================================
- * app.js — UI wiring for the sequence aligner.
+ * app.js: UI wiring for the sequence aligner.
  * ==========================================================================*/
 "use strict";
 
@@ -86,15 +86,50 @@ function buildResult(p, s1, s2, n1, n2) {
   return align(s1, s2, sub, p.gap, p.mode, n1, n2);
 }
 
+// Is a raw input essentially a DNA string (only A/C/G/T/U/N)?
+function isMostlyDNA(raw) {
+  const letters = raw.toUpperCase().match(/[A-Z*]/g);
+  if (!letters || !letters.length) return false;
+  const dna = letters.filter((c) => "ACGTUN".includes(c)).length;
+  return dna / letters.length >= 0.9;
+}
+
+// Decide what actually gets aligned, so DNA and protein aren't silently confused.
+// Protein selected + DNA input  -> translate the coding DNA to protein (frame 1).
+// DNA selected + protein input  -> flag it (you cannot score amino acids as DNA bases).
+function resolveSeq(raw, type) {
+  if (type === "Protein") {
+    if (isMostlyDNA(raw)) {
+      const dna = cleanSeq(raw, "DNA");
+      const aa = translate(dna).replace(/\*+$/, "");
+      return { seq: aa, translated: true, hasStop: aa.includes("*") };
+    }
+    return { seq: cleanSeq(raw, "Protein") };
+  }
+  if (!isMostlyDNA(raw) && /[A-Za-z]/.test(raw)) return { seq: cleanSeq(raw, "DNA"), notDNA: true };
+  return { seq: cleanSeq(raw, "DNA") };
+}
+
 let pendingLarge = false;
 function compute(force) {
   const p = params();
-  const s1 = cleanSeq($("seq1").value, p.type);
-  const s2 = cleanSeq($("seq2").value, p.type);
+  const r1 = resolveSeq($("seq1").value, p.type);
+  const r2 = resolveSeq($("seq2").value, p.type);
+
+  if (r1.notDNA || r2.notDNA) {
+    $("statgrid").innerHTML = "";
+    $("result").innerHTML = `<div class="note" style="border-left-color:var(--mismatch)">These look like
+      <b>protein</b> sequences, not DNA. Switch <b>Type</b> to <b>Protein</b> to score them with a substitution
+      matrix. (The four DNA bases A/C/G/T are also valid amino-acid letters, so scoring amino acids as if they
+      were DNA is not biologically meaningful.)</div>`;
+    return;
+  }
+  const s1 = r1.seq, s2 = r2.seq;
   if (!s1.length || !s2.length) { $("result").innerHTML = `<span class="muted">Enter two sequences.</span>`; $("statgrid").innerHTML = ""; return; }
+
   const cells = s1.length * s2.length;
   if (p.gapModel === "affine" && cells > AFFINE_LIMIT) {
-    $("result").innerHTML = `<span class="muted">Affine gaps are capped for very large sequences — switch to Linear, or use shorter sequences.</span>`;
+    $("result").innerHTML = `<span class="muted">Affine gaps are capped for very large sequences; switch to Linear, or use shorter sequences.</span>`;
     return;
   }
   if (!force && cells > AUTO_LIMIT) {
@@ -109,6 +144,15 @@ function compute(force) {
     const res = buildResult(p, s1, s2, n1, n2);
     renderStats(res, $("statgrid"));
     renderAlignment(res, $("result"));
+    if (r1.translated || r2.translated) {
+      const stopNote = (r1.hasStop || r2.hasStop)
+        ? " Heads up: reading frame 1 contains a stop codon, so this DNA is not a complete open reading frame (real genes translate cleanly)."
+        : "";
+      $("result").insertAdjacentHTML("afterbegin",
+        `<div class="note" style="margin-bottom:10px"><b>Translated to protein.</b> Protein is selected and the
+         input looks like DNA, so it was translated (reading frame 1) and the amino-acid sequences were scored
+         with ${p.matrix}.${stopNote}</div>`);
+    }
   }, 10);
 }
 
@@ -214,7 +258,7 @@ function runSars() {
 
     $("sarsCallout").innerHTML = [
       [`${dSt.percentIdentity.toFixed(1)}%`, "DNA identity"],
-      [`${pSt.percentIdentity.toFixed(1)}%`, "protein identity — more conserved than its own gene"],
+      [`${pSt.percentIdentity.toFixed(1)}%`, "protein identity (more conserved than its own gene)"],
       [`${Math.round(100 * synon / diff)}%`, "of differing codons are synonymous (protein unchanged)"],
       [`${Math.round(100 * pos[2] / totpos)}%`, "of substitutions sit at the 3rd (wobble) position"],
     ].map(([n, t]) => `<div class="big"><div class="n">${n}</div><div class="t">${t}</div></div>`).join("");
@@ -254,8 +298,69 @@ function runQualDemo() {
     .join("");
   $("qualOut").innerHTML =
     `<table class="stats"><tr><td class="muted">parameters (one fixed human/mouse HBB alignment)</td><td class="muted">score</td></tr>${rows}</table>
-     <p class="muted" style="margin:8px 0 0">The alignment never changed — identity is ${id}% throughout — yet the score swings from
-     ~290 to ~1770. That is why a bigger score can’t mean a better alignment.</p>`;
+     <p class="muted" style="margin:8px 0 0">The alignment never changed (identity is ${id}% throughout), yet the score swings from
+     ~290 to ~1770. That is why a bigger score cannot mean a better alignment.</p>`;
+}
+
+/* ---------- quality demo 2: the quality profile (identity is not enough) ---------- */
+function runProfileDemo() {
+  const good = align(SEQS.hbbHumanDNA, SEQS.hbbMouseDNA, dnaMatrix(1, 1), 2, "global");
+  const bad = align(SEQS.hbbHumanDNA, SEQS.hbbMouseDNA, dnaMatrix(2, 2), 0.1, "global");
+  const gs = alignmentStats(good), bs = alignmentStats(bad);
+  const cov = (st) => `${(100 * (st.matches + st.mismatches) / st.columns).toFixed(0)}%`;
+  const row = (label, g, b) => `<tr><td>${label}</td><td>${g}</td><td>${b}</td></tr>`;
+  $("profileOut").innerHTML =
+    `<table class="stats">
+       <tr><td class="muted">measure (human vs mouse HBB)</td><td class="muted">honest params</td><td class="muted">"identity-gaming" params</td></tr>
+       ${row("percent identity", gs.percentIdentity.toFixed(1) + "%", "<b>" + bs.percentIdentity.toFixed(1) + "%</b>")}
+       ${row("number of gaps", gs.numGaps, "<b>" + bs.numGaps + "</b>")}
+       ${row("alignment length", gs.columns + " cols", bs.columns + " cols")}
+       ${row("non-gap coverage", cov(gs), "<b>" + cov(bs) + "</b>")}
+     </table>
+     <p class="muted" style="margin:8px 0 0">Read alone, identity <i>prefers</i> the second alignment (100%). Read as a
+     profile, the ${bs.numGaps} gaps and ${cov(bs)} coverage expose it as shredded nonsense. No single number is safe.</p>`;
+}
+
+/* ---------- quality demo 3: significance by shuffling ---------- */
+function runShuffleDemo() {
+  $("shuffleOut").innerHTML = `<span class="muted">Shuffling…</span>`;
+  setTimeout(() => {
+    const human = cleanSeq(SEQS.hbbHumanAA, "Protein");
+    const real = align(human, cleanSeq(SEQS.hbbZebrafishAA, "Protein"), MATRICES.BLOSUM62, 11, "global").score;
+    const chars = [...cleanSeq(SEQS.hbbZebrafishAA, "Protein")];
+    const nullScores = [];
+    for (let i = 0; i < 120; i++) {
+      for (let k = chars.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [chars[k], chars[j]] = [chars[j], chars[k]]; }
+      nullScores.push(align(human, chars.join(""), MATRICES.BLOSUM62, 11, "global").score);
+    }
+    const mu = nullScores.reduce((a, b) => a + b, 0) / nullScores.length;
+    const sd = Math.sqrt(nullScores.reduce((a, b) => a + (b - mu) ** 2, 0) / nullScores.length);
+    const z = (real - mu) / sd;
+
+    // histogram
+    const lo = Math.min(...nullScores), hi = Math.max(real, ...nullScores);
+    const span = (hi - lo) || 1, nb = 26, bins = new Array(nb).fill(0);
+    for (const s of nullScores) bins[Math.min(nb - 1, Math.floor((s - lo) / span * nb))]++;
+    const maxB = Math.max(...bins);
+    const W = 560, H = 120, bw = W / nb;
+    let bars = "";
+    for (let i = 0; i < nb; i++) { const h = bins[i] / maxB * (H - 20); bars += `<rect x="${(i * bw).toFixed(1)}" y="${(H - h).toFixed(1)}" width="${(bw - 1).toFixed(1)}" height="${h.toFixed(1)}" fill="var(--gap)"/>`; }
+    const realX = (real - lo) / span * W;
+    const svg = `<svg viewBox="0 0 ${W} ${H + 22}" width="100%" style="max-width:${W}px">${bars}
+      <line x1="${realX.toFixed(1)}" y1="0" x2="${realX.toFixed(1)}" y2="${H}" stroke="var(--mismatch)" stroke-width="2"/>
+      <text x="${Math.min(realX, W - 60).toFixed(1)}" y="${H + 16}" fill="var(--mismatch)" font-size="12" font-family="sans-serif">real: ${real.toFixed(0)}</text>
+      <text x="0" y="${H + 16}" fill="var(--muted)" font-size="12" font-family="sans-serif">shuffled scores</text></svg>`;
+
+    const stat = (k, v) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+    $("shuffleOut").innerHTML =
+      `<div class="statgrid" style="grid-template-columns:repeat(4,1fr);margin-bottom:10px">
+         ${stat("real score", real.toFixed(0))}${stat("shuffled mean", mu.toFixed(0))}${stat("std dev", sd.toFixed(0))}${stat("z-score", z.toFixed(0) + "σ")}
+       </div>${svg}
+       <p class="muted" style="margin:8px 0 0">The real alignment sits about <b>${z.toFixed(0)} standard deviations</b>
+       above what random sequences of the same amino-acid composition score. A z-score that large means the match is
+       essentially impossible by chance, so the homology is real. (This is the logic behind BLAST's E-value.)</p>`;
+    $("shuffleDemo").textContent = "Run the shuffle test again";
+  }, 20);
 }
 
 /* ---------- gap tie demo ---------- */
@@ -303,6 +408,8 @@ function init() {
   document.querySelectorAll("[data-demo]").forEach((b) => b.addEventListener("click", () => runGoodBad(b.dataset.demo)));
   $("sarsRun").addEventListener("click", runSars);
   $("qualDemo").addEventListener("click", runQualDemo);
+  $("profileDemo").addEventListener("click", runProfileDemo);
+  $("shuffleDemo").addEventListener("click", runShuffleDemo);
   $("gapDemo").addEventListener("click", runGapDemo);
 
   syncLabels();

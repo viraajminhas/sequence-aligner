@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sequence Aligner — build &amp; tune your own</title>
+<title>Sequence Aligner: build &amp; tune your own</title>
 <meta name="description" content="An interactive Needleman-Wunsch / Smith-Waterman sequence aligner: tune the scoring, compare DNA to protein, and see why a higher score isn't a better alignment.">
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -80,10 +80,10 @@
             <input type="range" id="extend" min="0" max="10" step="0.5" value="1"></label>
         </div>
         <p id="affineHelp" class="note hidden" style="margin:0 0 14px">
-          <b>Affine gap.</b> A gap of length <i>L</i> costs <b>open + extend × (L−1)</b> — a bigger one-time
+          <b>Affine gap.</b> A gap of length <i>L</i> costs <b>open + extend × (L−1)</b>: a bigger one-time
           penalty to <i>start</i> a gap, then a small charge per extra base. Because starting a gap is expensive
           but continuing one is cheap, a single long indel (one mutational event) beats many scattered short
-          gaps. Linear scoring — one flat cost per gap column — can’t make that distinction.
+          gaps. Linear scoring, with one flat cost per gap column, cannot make that distinction.
         </p>
 
         <div class="btnrow">
@@ -111,7 +111,7 @@
     <div class="kicker">The lesson</div>
     <h2>A higher score is not a better alignment</h2>
     <p class="sub">Drop the gap penalty toward zero and the optimizer discovers it can trade every mismatch
-      for a tiny gap — reaching a <b>higher score and “100% identity”</b> by shredding the biology. It is
+      for a tiny gap, reaching a <b>higher score and “100% identity”</b> by shredding the biology. It is
       technically optimal for those parameters and completely wrong.</p>
     <div class="btnrow" style="margin-bottom:16px">
       <button class="btn ghost" data-demo="toy">Toy example</button>
@@ -119,16 +119,16 @@
     </div>
     <div class="compare" id="gbCompare"></div>
     <p class="note" style="margin-top:16px">Notice the “bad” alignment reports the <b>higher</b> identity. That
-      is the whole point: percent identity, read on its own, rewarded the vandalism — which is exactly why the
+      is the whole point: percent identity, read on its own, rewarded the vandalism, which is exactly why the
       gap statistics next to it matter.</p>
   </section>
 
   <!-- ================= DNA VS PROTEIN ================= -->
   <section id="dnaprot">
     <div class="kicker">DNA vs protein</div>
-    <h2>SARS-CoV vs SARS-CoV-2 spike — the synonymous-mutation story</h2>
-    <p class="sub">Align the spike of the 2003 SARS virus and SARS-CoV-2 two ways — as coding DNA, then as the
-      protein it encodes — and ask where they disagree.</p>
+    <h2>SARS-CoV vs SARS-CoV-2 spike: the synonymous-mutation story</h2>
+    <p class="sub">Align the spike of the 2003 SARS virus and SARS-CoV-2 two ways (as coding DNA, then as the
+      protein it encodes) and ask where they disagree.</p>
     <button class="btn" id="sarsRun">Run the analysis ▶</button>
     <div id="sarsOut" class="hidden" style="margin-top:18px">
       <div class="callout" id="sarsCallout"></div>
@@ -146,7 +146,7 @@
       </div>
       <div class="prose" style="margin-top:16px">
         <p>The DNA alignment sees <b>hundreds more differences</b> than the protein does. Most of the codons that
-          differ are <b>synonymous</b> — the DNA changed but the amino acid did not — and those substitutions
+          differ are <b>synonymous</b> (the DNA changed but the amino acid did not), and those substitutions
           pile up at the <b>third (“wobble”) codon position</b>, exactly where the genetic code is most
           degenerate. This is the fingerprint of <b>purifying selection</b>: changes that would alter the
           protein are weeded out, so the protein stays more conserved than its own gene.</p>
@@ -161,31 +161,61 @@
   <section id="quality" class="prose">
     <div class="kicker">The central question</div>
     <h2>So how do you quantify alignment quality?</h2>
-    <p class="sub">If the score itself moves with the parameters, what do you trust instead? The score is the
-      optimizer’s <i>objective</i>, not a measure of <i>truth</i>. Quality means: did the alignment recover the
-      real evolutionary correspondence? Judge it in four layers.</p>
+    <p class="sub">If the score itself moves with the parameters, what do you trust instead? The score is only
+      the optimizer's objective, not a measure of truth. "Quality" asks a different question: did the alignment
+      recover the real evolutionary or structural correspondence between the two sequences? Here are five checks,
+      each grounded in biology, and most of them run right here.</p>
     <div class="card">
-      <h3>1 · The raw score is not comparable across settings</h3>
-      <p>Take one <b>fixed</b> alignment and rescore it under different parameters — the number moves though not
-        a single letter changed. Doubling the match reward roughly doubles the score.</p>
+
+      <h3>1 &middot; The raw score is not comparable across settings</h3>
+      <p>Take one <b>fixed</b> alignment and rescore it under different parameters. Not a single letter moves,
+        yet the number changes; doubling the match reward roughly doubles the score. So a bigger score never
+        means a better alignment unless the scoring scheme is held fixed.</p>
+      <p class="muted"><b>Example.</b> The same human vs mouse HBB alignment (83.5% identical, no gaps) scores
+        293 with match&nbsp;1 but 1,773 with match&nbsp;5. Identical biology, six times the number.</p>
       <button class="btn ghost" id="qualDemo">Show: same alignment, different scores</button>
       <div id="qualOut" style="margin-top:10px"></div>
-      <h3>2 · Use scale-free descriptors — but never identity alone</h3>
-      <p>Percent identity, gap count, longest gap and coverage don’t depend on the reward units. But identity
-        can be inflated by gaps (§ Good vs bad). Quality is a <b>profile</b>: high identity <i>and</i> few
-        sensible gaps <i>and</i> near-complete coverage. Any single number is gameable.</p>
-      <h3>3 · Is it better than chance?</h3>
-      <p>A good alignment scores far above what shuffled sequences of the same composition achieve. Aligning
-        against many shuffles gives a z-score (the idea behind BLAST’s E-value). For human vs zebrafish HBB the
-        real score sits <b>~27 standard deviations</b> above the shuffled mean — unmistakably real homology.</p>
-      <h3>4 · Does it agree with biology you didn’t score for?</h3>
-      <p>Reading frame (real indels in coding DNA come in multiples of three), conserved motifs and active-site
-        residues lining up, agreement with 3-D structure. In our spike alignment the terminal
-        <code class="k">…KFDEDDSEPVLKGVKLHYT</code> matches perfectly — a biological anchor, not an artifact.</p>
-      <p class="note"><b>Bottom line:</b> there is no parameter-free definition of quality, because alignment is
-        <i>inference</i>, not measurement. The parameters <i>are</i> your evolutionary model. A good alignment is
-        one whose model fits the sequences and whose result survives the checks above; the score only tells you
-        it was optimal <i>for the model you chose</i>.</p>
+
+      <h3>2 &middot; Scale-free descriptors help, but never identity alone</h3>
+      <p>Percent identity, gap count, longest gap, and coverage do not depend on the reward units, so they
+        travel across scoring schemes. But identity by itself is easy to game: you can manufacture a high number
+        by stuffing an alignment with gaps so that no two mismatched residues ever share a column.</p>
+      <p class="muted"><b>Example.</b> The "bad" human/mouse HBB alignment reaches a perfect 100% identity, but
+        only by opening 103 tiny gaps and stretching the alignment from 444 to 507 columns. The honest alignment
+        is 83.5% identity with 2 gaps. Identity, gaps, and coverage together expose the fake; identity alone
+        rewards it.</p>
+      <button class="btn ghost" id="profileDemo">Compare the two quality profiles</button>
+      <div id="profileOut" style="margin-top:10px"></div>
+
+      <h3>3 &middot; Is it better than chance? (statistical significance)</h3>
+      <p>A real alignment should score far above what random sequences of the same length and composition can
+        reach. Shuffle one sequence many times, align each shuffle, and measure how many standard deviations the
+        real score sits above that null distribution. This is the reasoning behind BLAST's E-value: the question
+        is not "is the number big?" but "could this have happened by chance?"</p>
+      <button class="btn ghost" id="shuffleDemo">Run the shuffle test (human vs zebrafish HBB)</button>
+      <div id="shuffleOut" style="margin-top:10px"></div>
+
+      <h3>4 &middot; Does it respect the reading frame? (coding DNA)</h3>
+      <p>Real insertions and deletions in a protein-coding gene almost always come in multiples of three,
+        because a length change that is not a multiple of three shifts the reading frame and scrambles every
+        downstream codon. An alignment of coding DNA littered with 1- and 2-base gaps is almost certainly a
+        scoring artifact, however high it scores.</p>
+      <p class="muted"><b>Example.</b> In the SARS spike the two genes differ in length by 18 amino acids, which
+        is exactly 54 nucleotides: an in-frame indel, precisely what selection on a functional protein predicts.</p>
+
+      <h3>5 &middot; Does it agree with biology you did not score for?</h3>
+      <p>The strongest test is external agreement. Conserved motifs, catalytic residues, and cysteines that pair
+        into disulfide bonds should line up; the alignment should match a structure-based superposition or a
+        curated reference. None of that information is in the scoring, so agreement is genuine evidence.</p>
+      <p class="muted"><b>Example.</b> In the spike alignment the C-terminal
+        <code class="k">...KFDEDDSEPVLKGVKLHYT</code> lines up perfectly in both viruses. The aligner was never
+        told this region is conserved; it recovered a real biological anchor on its own.</p>
+
+      <p class="note"><b>Bottom line.</b> There is no parameter-free definition of alignment quality, because
+        alignment is inference (a hypothesis about shared ancestry), not measurement. The parameters <i>are</i>
+        your evolutionary model: how often substitutions happen versus indels. A good alignment is one whose
+        model fits the sequences and whose result survives the checks above; the score only tells you it was
+        optimal for the model you chose. Quality is whether you chose the right model.</p>
     </div>
   </section>
 
@@ -194,16 +224,16 @@
     <div class="kicker">Stretch</div>
     <h2>Why gaps need smarter scoring</h2>
     <p class="sub">Try to find one gap penalty that both allows a single long, realistic indel and discourages
-      lots of scattered short gaps. You can’t — and here’s the proof.</p>
+      lots of scattered short gaps. You cannot, and here is the proof.</p>
     <div class="card">
       <p>My gap scoring is <b>linear</b>: a gap of length <i>L</i> costs <i>g × L</i>. So one gap of length 6
         costs exactly the same as three scattered gaps of length 2. The scoring only sees <i>total gap
-        length</i> — it is blind to whether gaps are one event or scattered. Watch the tie:</p>
+        length</i>, so it is blind to whether gaps are one event or scattered. Watch the tie:</p>
       <button class="btn ghost" id="gapDemo">Prove the tie (10 A’s vs 4 A’s)</button>
       <div id="gapOut" style="margin-top:10px"></div>
       <p style="margin-top:14px">Biology disagrees: a single 6-base indel is <b>one</b> mutational event, far
-        likelier than six independent single-base indels. The fix is <b>affine</b> gaps — a big one-time
-        <b>open</b> penalty plus a small <b>extend</b> penalty per extra base — so one long gap pays <i>open</i>
+        likelier than six independent single-base indels. The fix is <b>affine</b> gaps: a big one-time
+        <b>open</b> penalty plus a small <b>extend</b> penalty per extra base, so one long gap pays <i>open</i>
         once while many short gaps each pay it. Flip the tool’s <b>gap model to Affine</b> and re-run the “bad”
         presets to feel the difference.</p>
     </div>
@@ -211,7 +241,7 @@
 
   <footer>
     Built on my Module 2 code (<code class="k">globalAlignment.py</code>, <code class="k">localAlignment.py</code>),
-    ported to JavaScript so it runs client-side — no server, no data leaves your browser. Sequences: HBB CDS
+    ported to JavaScript so it runs client-side: no server, no data leaves your browser. Sequences: HBB CDS
     (NCBI RefSeq), HBB &amp; spike proteins (UniProt / NCBI). Matrices: standard BLOSUM / PAM.
   </footer>
 

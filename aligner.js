@@ -1,5 +1,5 @@
 /* ============================================================================
- * aligner.js — the alignment engine, ported from my Module 2 Python code.
+ * aligner.js: the alignment engine, ported from my Module 2 Python code.
  *
  * Same dynamic-programming recurrence as globalAlignment.py / localAlignment.py,
  * generalized to a substitution matrix `sub` so it scores DNA (flat) and protein
