@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sequence Aligner — build &amp; tune your own</title>
+<meta name="description" content="An interactive Needleman-Wunsch / Smith-Waterman sequence aligner: tune the scoring, compare DNA to protein, and see why a higher score isn't a better alignment.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <div class="brand"><span class="dot"></span> Sequence Aligner</div>
+    <a class="link" href="#tool">The tool</a>
+    <a class="link" href="#goodbad">Good vs bad</a>
+    <a class="link" href="#dnaprot">DNA vs protein</a>
+    <a class="link" href="#quality">Quality</a>
+    <a class="link" href="#gaps">The gap problem</a>
+  </div>
+</nav>
+
+<main>
+
+  <header class="hero">
+    <div class="kicker">CMU Pre-College · Computational Biology · Module 2</div>
+    <h1>Build &amp; tune your own sequence aligner</h1>
+    <p class="lede">A from-scratch global (Needleman–Wunsch) and local (Smith–Waterman) aligner that runs
+      entirely in your browser. Tune the match reward, mismatch and gap penalties; switch DNA ↔ protein;
+      and watch the alignment change under your hands.</p>
+    <p class="quote">“Change the scoring, and you change the alignment. Which one is right, and how would you know?”</p>
+  </header>
+
+  <!-- ================= THE TOOL ================= -->
+  <section id="tool">
+    <div class="kicker">The app</div>
+    <h2>Align two sequences</h2>
+    <p class="sub">Load an example or paste your own. For DNA you tune match / mismatch / gap; for protein you
+      pick a scoring matrix. Everything recomputes live (large sequences use the <b>Align</b> button).</p>
+
+    <div class="grid">
+      <!-- controls -->
+      <div class="card">
+        <div class="chips" id="presets"></div>
+
+        <label class="fld"><span>Sequence 1 &nbsp;<input type="text" id="name1" value="seq1" style="width:120px;display:inline-block;padding:2px 6px;font-size:12px"></span>
+          <textarea id="seq1" spellcheck="false"></textarea></label>
+        <label class="fld"><span>Sequence 2 &nbsp;<input type="text" id="name2" value="seq2" style="width:120px;display:inline-block;padding:2px 6px;font-size:12px"></span>
+          <textarea id="seq2" spellcheck="false"></textarea></label>
+
+        <div class="row" style="margin-bottom:14px">
+          <div><span class="muted" style="font-size:12.5px;font-weight:600">Type</span><br>
+            <div class="seg" id="type"><button data-v="DNA" class="active">DNA</button><button data-v="Protein">Protein</button></div></div>
+          <div><span class="muted" style="font-size:12.5px;font-weight:600">Mode</span><br>
+            <div class="seg" id="mode"><button data-v="global" class="active">Global</button><button data-v="local">Local</button></div></div>
+        </div>
+
+        <div id="dnaControls">
+          <label class="fld slider"><span>Match reward <span class="val" id="matchV">1</span></span>
+            <input type="range" id="match" min="0" max="10" step="0.5" value="1"></label>
+          <label class="fld slider"><span>Mismatch penalty <span class="val" id="mismatchV">1</span></span>
+            <input type="range" id="mismatch" min="0" max="10" step="0.5" value="1"></label>
+        </div>
+        <div id="protControls" class="hidden">
+          <label class="fld"><span>Scoring matrix</span>
+            <select id="matrix"></select></label>
+        </div>
+
+        <label class="fld slider"><span>Gap penalty <span class="val" id="gapV">2</span></span>
+          <input type="range" id="gap" min="0" max="12" step="0.1" value="2"></label>
+
+        <div style="margin-bottom:14px">
+          <span class="muted" style="font-size:12.5px;font-weight:600">Gap model</span><br>
+          <div class="seg" id="gapModel"><button data-v="linear" class="active">Linear</button><button data-v="affine">Affine</button></div>
+        </div>
+        <div id="affineControls" class="row hidden" style="margin-bottom:14px">
+          <label class="fld slider" style="margin:0"><span>Open <span class="val" id="openV">6</span></span>
+            <input type="range" id="open" min="0" max="20" step="1" value="6"></label>
+          <label class="fld slider" style="margin:0"><span>Extend <span class="val" id="extendV">1</span></span>
+            <input type="range" id="extend" min="0" max="10" step="0.5" value="1"></label>
+        </div>
+
+        <div class="btnrow">
+          <button class="btn good" id="btnGood">Good preset</button>
+          <button class="btn bad" id="btnBad">Bad preset</button>
+          <button class="btn" id="btnAlign">Align ▶</button>
+        </div>
+      </div>
+
+      <!-- output -->
+      <div class="card">
+        <div class="legend">
+          <span><b style="background:var(--match)"></b>match</span>
+          <span><b style="background:var(--mismatch)"></b>mismatch</span>
+          <span><b style="background:var(--gap)"></b>gap</span>
+        </div>
+        <div class="statgrid" id="statgrid"></div>
+        <div class="aln" id="result" style="margin-top:16px"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= GOOD VS BAD ================= -->
+  <section id="goodbad">
+    <div class="kicker">The lesson</div>
+    <h2>A higher score is not a better alignment</h2>
+    <p class="sub">Drop the gap penalty toward zero and the optimizer discovers it can trade every mismatch
+      for a tiny gap — reaching a <b>higher score and “100% identity”</b> by shredding the biology. It is
+      technically optimal for those parameters and completely wrong.</p>
+    <div class="btnrow" style="margin-bottom:16px">
+      <button class="btn ghost" data-demo="toy">Toy example</button>
+      <button class="btn ghost" data-demo="hbb">Real gene: HBB DNA (human vs mouse)</button>
+    </div>
+    <div class="compare" id="gbCompare"></div>
+    <p class="note" style="margin-top:16px">Notice the “bad” alignment reports the <b>higher</b> identity. That
+      is the whole point: percent identity, read on its own, rewarded the vandalism — which is exactly why the
+      gap statistics next to it matter.</p>
+  </section>
+
+  <!-- ================= DNA VS PROTEIN ================= -->
+  <section id="dnaprot">
+    <div class="kicker">DNA vs protein</div>
+    <h2>SARS-CoV vs SARS-CoV-2 spike — the synonymous-mutation story</h2>
+    <p class="sub">Align the spike of the 2003 SARS virus and SARS-CoV-2 two ways — as coding DNA, then as the
+      protein it encodes — and ask where they disagree.</p>
+    <button class="btn" id="sarsRun">Run the analysis ▶</button>
+    <div id="sarsOut" class="hidden" style="margin-top:18px">
+      <div class="callout" id="sarsCallout"></div>
+      <div class="card" style="margin-top:6px">
+        <div class="row" style="gap:34px;flex-wrap:wrap">
+          <div style="flex:1;min-width:280px">
+            <div class="muted" style="font-weight:600;margin-bottom:6px">Aligned spike codons</div>
+            <div class="bars" id="barsCodon"></div>
+          </div>
+          <div style="flex:1;min-width:280px">
+            <div class="muted" style="font-weight:600;margin-bottom:6px">Nucleotide substitutions by codon position</div>
+            <div class="bars" id="barsPos"></div>
+          </div>
+        </div>
+      </div>
+      <div class="prose" style="margin-top:16px">
+        <p>The DNA alignment sees <b>hundreds more differences</b> than the protein does. Most of the codons that
+          differ are <b>synonymous</b> — the DNA changed but the amino acid did not — and those substitutions
+          pile up at the <b>third (“wobble”) codon position</b>, exactly where the genetic code is most
+          degenerate. This is the fingerprint of <b>purifying selection</b>: changes that would alter the
+          protein are weeded out, so the protein stays more conserved than its own gene.</p>
+        <p class="note"><b>The punchline:</b> the DNA alignment counts <i>how much the sequence changed</i>; the
+          protein alignment shows <i>how much of that change could actually matter</i>. Synonymous mutations
+          are the gap between those two numbers. To find the mutations that matter, align the protein.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= QUALITY ================= -->
+  <section id="quality" class="prose">
+    <div class="kicker">The central question</div>
+    <h2>So how do you quantify alignment quality?</h2>
+    <p class="sub">If the score itself moves with the parameters, what do you trust instead? The score is the
+      optimizer’s <i>objective</i>, not a measure of <i>truth</i>. Quality means: did the alignment recover the
+      real evolutionary correspondence? Judge it in four layers.</p>
+    <div class="card">
+      <h3>1 · The raw score is not comparable across settings</h3>
+      <p>Take one <b>fixed</b> alignment and rescore it under different parameters — the number moves though not
+        a single letter changed. Doubling the match reward roughly doubles the score.</p>
+      <button class="btn ghost" id="qualDemo">Show: same alignment, different scores</button>
+      <div id="qualOut" style="margin-top:10px"></div>
+      <h3>2 · Use scale-free descriptors — but never identity alone</h3>
+      <p>Percent identity, gap count, longest gap and coverage don’t depend on the reward units. But identity
+        can be inflated by gaps (§ Good vs bad). Quality is a <b>profile</b>: high identity <i>and</i> few
+        sensible gaps <i>and</i> near-complete coverage. Any single number is gameable.</p>
+      <h3>3 · Is it better than chance?</h3>
+      <p>A good alignment scores far above what shuffled sequences of the same composition achieve. Aligning
+        against many shuffles gives a z-score (the idea behind BLAST’s E-value). For human vs zebrafish HBB the
+        real score sits <b>~27 standard deviations</b> above the shuffled mean — unmistakably real homology.</p>
+      <h3>4 · Does it agree with biology you didn’t score for?</h3>
+      <p>Reading frame (real indels in coding DNA come in multiples of three), conserved motifs and active-site
+        residues lining up, agreement with 3-D structure. In our spike alignment the terminal
+        <code class="k">…KFDEDDSEPVLKGVKLHYT</code> matches perfectly — a biological anchor, not an artifact.</p>
+      <p class="note"><b>Bottom line:</b> there is no parameter-free definition of quality, because alignment is
+        <i>inference</i>, not measurement. The parameters <i>are</i> your evolutionary model. A good alignment is
+        one whose model fits the sequences and whose result survives the checks above; the score only tells you
+        it was optimal <i>for the model you chose</i>.</p>
+    </div>
+  </section>
+
+  <!-- ================= GAP PROBLEM ================= -->
+  <section id="gaps" class="prose">
+    <div class="kicker">Stretch</div>
+    <h2>Why gaps need smarter scoring</h2>
+    <p class="sub">Try to find one gap penalty that both allows a single long, realistic indel and discourages
+      lots of scattered short gaps. You can’t — and here’s the proof.</p>
+    <div class="card">
+      <p>My gap scoring is <b>linear</b>: a gap of length <i>L</i> costs <i>g × L</i>. So one gap of length 6
+        costs exactly the same as three scattered gaps of length 2. The scoring only sees <i>total gap
+        length</i> — it is blind to whether gaps are one event or scattered. Watch the tie:</p>
+      <button class="btn ghost" id="gapDemo">Prove the tie (10 A’s vs 4 A’s)</button>
+      <div id="gapOut" style="margin-top:10px"></div>
+      <p style="margin-top:14px">Biology disagrees: a single 6-base indel is <b>one</b> mutational event, far
+        likelier than six independent single-base indels. The fix is <b>affine</b> gaps — a big one-time
+        <b>open</b> penalty plus a small <b>extend</b> penalty per extra base — so one long gap pays <i>open</i>
+        once while many short gaps each pay it. Flip the tool’s <b>gap model to Affine</b> and re-run the “bad”
+        presets to feel the difference.</p>
+    </div>
+  </section>
+
+  <footer>
+    Built on my Module 2 code (<code class="k">globalAlignment.py</code>, <code class="k">localAlignment.py</code>),
+    ported to JavaScript so it runs client-side — no server, no data leaves your browser. Sequences: HBB CDS
+    (NCBI RefSeq), HBB &amp; spike proteins (UniProt / NCBI). Matrices: standard BLOSUM / PAM.
+  </footer>
+
+</main>
+
+<script src="data.js"></script>
+<script src="aligner.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
