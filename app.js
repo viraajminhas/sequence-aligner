@@ -46,39 +46,62 @@ function params() {
   };
 }
 
-/* ---------- render an alignment into a container ---------- */
-function renderAlignment(res, el, { width = 60, maxCols = 600 } = {}) {
-  const top = res.top, bot = res.bottom, total = top.length;
+/* ---------- render an alignment into a container ----------
+ * For LOCAL mode, if the full sequences are provided (full1/full2), the matched core
+ * is shown embedded in the whole sequences: the flanks on either side are drawn as
+ * unaligned overhangs (residue-vs-gap), tagged .ctx so they look dimmed, while the
+ * scored core keeps the normal match/mismatch colors. Stats are always on the core. */
+function renderAlignment(res, el, { width = 60, maxCols = 600, full1 = null, full2 = null } = {}) {
+  const isLocal = res.mode && res.mode.indexOf("local") === 0 && res.top.length > 0;
+  let top = res.top, bot = res.bottom;
+  let p1 = res.start1 || 0, p2 = res.start2 || 0;   // residue position where the DISPLAY begins
+  let coreStart = 0, coreEnd = res.top.length;       // core column range within the displayed rows
+  let ctxNote = "";
+
+  if (isLocal && full1 != null && full2 != null) {
+    const cap = 60, s1 = full1, s2 = full2;
+    const lp1 = Math.min(res.start1, cap), lp2 = Math.min(res.start2, cap);
+    const rp1 = Math.min(s1.length - res.end1, cap), rp2 = Math.min(s2.length - res.end2, cap);
+    const leftS1 = s1.slice(res.start1 - lp1, res.start1), leftS2 = s2.slice(res.start2 - lp2, res.start2);
+    const rightS1 = s1.slice(res.end1, res.end1 + rp1), rightS2 = s2.slice(res.end2, res.end2 + rp2);
+    const dash = (k) => "-".repeat(k);
+    const leftTop = leftS1 + dash(leftS2.length), leftBot = dash(leftS1.length) + leftS2;
+    const rightTop = rightS1 + dash(rightS2.length), rightBot = dash(rightS1.length) + rightS2;
+    top = leftTop + res.top + rightTop;
+    bot = leftBot + res.bottom + rightBot;
+    coreStart = leftTop.length; coreEnd = coreStart + res.top.length;
+    p1 = res.start1 - lp1; p2 = res.start2 - lp2;
+    const hiddenL = Math.max(res.start1 - lp1, res.start2 - lp2);
+    const hiddenR = Math.max((s1.length - res.end1) - rp1, (s2.length - res.end2) - rp2);
+    if (hiddenL || hiddenR) ctxNote = ` (flanks capped at ${cap} residues per side${hiddenL ? `; +${hiddenL} left` : ""}${hiddenR ? `; +${hiddenR} right` : ""})`;
+  }
+
+  const total = top.length;
   const shown = Math.min(total, maxCols);
-  // Local alignment returns only the best-matching sub-region. Say so, and show WHERE
-  // it is in each sequence, so it does not look like the rest was "deleted".
+
   let header = "";
-  if (res.mode && res.mode.indexOf("local") === 0 && total > 0) {
-    const l1 = res.len1 != null ? ` of ${res.len1}` : "";
-    const l2 = res.len2 != null ? ` of ${res.len2}` : "";
-    const trimmed = (res.start1 > 0 || res.end1 < (res.len1 ?? res.end1) || res.start2 > 0 || res.end2 < (res.len2 ?? res.end2));
+  if (isLocal) {
+    const l1 = res.len1 != null ? ` of ${res.len1}` : "", l2 = res.len2 != null ? ` of ${res.len2}` : "";
+    const inContext = full1 != null && full2 != null;
     header = `<div style="font-family:-apple-system,'Segoe UI',Roboto,sans-serif;font-size:12.5px;`
       + `color:var(--muted);margin-bottom:8px;white-space:normal">`
-      + `<b>Local alignment</b> shows only the highest-scoring region, not the whole sequences. `
-      + `Aligned <b>${esc(res.name1)}</b> ${res.start1 + 1}–${res.end1}${l1} and `
-      + `<b>${esc(res.name2)}</b> ${res.start2 + 1}–${res.end2}${l2}. `
-      + (trimmed
-          ? `Ends that would lower the score are trimmed (that is why it can be shorter than what you typed). `
+      + `<b>Local alignment.</b> The scored match spans <b>${esc(res.name1)}</b> ${res.start1 + 1}–${res.end1}${l1} `
+      + `and <b>${esc(res.name2)}</b> ${res.start2 + 1}–${res.end2}${l2}, and the stat tiles above describe only that region. `
+      + (inContext
+          ? `Below it is shown in the full context of both sequences: the <b>colored</b> columns are the match, the <b>grey</b> letters on either side are the unaligned flanks (insertions / deletions).${ctxNote} `
           : "")
-      + `Switch to <b>Global</b> to line up the full sequences end to end.</div>`;
+      + `Switch to <b>Global</b> to make the whole sequences line up end to end.</div>`;
   }
-  // The number after each row is the RESIDUE POSITION reached in that sequence
-  // (only non-gap letters count), starting from the local start offset. It is not
-  // the alignment-column index, so it stays correct through gaps and for local hits.
-  let p1 = res.start1 || 0, p2 = res.start2 || 0;
+
   let html = "";
   for (let start = 0; start < shown; start += width) {
     const end = Math.min(start + width, shown);
     let t = "", mid = "", b = "";
     for (let k = start; k < end; k++) {
       const x = top[k], y = bot[k];
+      const flank = k < coreStart || k >= coreEnd;   // outside the scored core
       let cls, m;
-      if (x === "-" || y === "-") { cls = "g"; m = " "; }
+      if (x === "-" || y === "-") { cls = flank ? "ctx" : "g"; m = " "; }
       else if (x === y) { cls = "m"; m = "|"; }
       else { cls = "x"; m = "."; }
       t += `<span class="res ${cls}">${x}</span>`;
@@ -93,7 +116,7 @@ function renderAlignment(res, el, { width = 60, maxCols = 600 } = {}) {
             `<div>${b}<span class="coord" title="${esc(res.name2)} position">  ${p2}</span></div>` +
             `</div>`;
   }
-  if (shown < total) html += `<div class="muted">… showing first ${shown} of ${total} columns (stats cover all ${total}).</div>`;
+  if (shown < total) html += `<div class="muted">… showing first ${shown} of ${total} displayed columns.</div>`;
   el.innerHTML = header + (html || `<span class="muted">No alignment.</span>`);
 }
 
@@ -178,7 +201,7 @@ function compute(force) {
   setTimeout(() => {
     const res = buildResult(p, s1, s2, n1, n2);
     renderStats(res, $("statgrid"));
-    renderAlignment(res, $("result"));
+    renderAlignment(res, $("result"), { full1: s1, full2: s2 });
     if (r1.translated || r2.translated) {
       const stopNote = (r1.hasStop || r2.hasStop)
         ? " Heads up: reading frame 1 contains a stop codon, so this DNA is not a complete open reading frame (real genes translate cleanly)."
@@ -239,7 +262,7 @@ function onTypeChange(v, recompute = true) {
 }
 
 /* ---------- Good vs Bad demo (compare two alignments) ---------- */
-function gbCard(title, tagClass, res) {
+function gbCard(title, tagClass, res, full1, full2) {
   const s = alignmentStats(res);
   const div = document.createElement("div");
   div.className = "card";
@@ -250,7 +273,7 @@ function gbCard(title, tagClass, res) {
       <div class="stat" title="number of separate gaps (indel runs)"><div class="k">gaps</div><div class="v">${s.numGaps}</div></div>
     </div>
     <div class="aln" style="margin-top:12px"></div>`;
-  renderAlignment(res, div.querySelector(".aln"), { maxCols: 240 });
+  renderAlignment(res, div.querySelector(".aln"), { maxCols: 240, full1, full2 });
   return div;
 }
 function runGoodBad(which) {
@@ -260,8 +283,8 @@ function runGoodBad(which) {
   const good = align(a, b, dnaMatrix(1, 1), 2, "global", n1, n2);
   const bad = align(a, b, dnaMatrix(2, 2), 0.1, "global", n1, n2);
   const box = $("gbCompare"); box.innerHTML = "";
-  box.appendChild(gbCard("GOOD · match 1, mismatch 1, gap 2", "good", good));
-  box.appendChild(gbCard("BAD · gap ≈ 0 (0.1)", "bad", bad));
+  box.appendChild(gbCard("GOOD · match 1, mismatch 1, gap 2", "good", good, a, b));
+  box.appendChild(gbCard("BAD · gap ≈ 0 (0.1)", "bad", bad, a, b));
 }
 
 /* ---------- SARS DNA vs protein ---------- */
@@ -363,8 +386,8 @@ function runLocalVsGlobal() {
   const g = align(SHARED_A, SHARED_B, MATRICES.BLOSUM62, 11, "global", "protein_A", "protein_B");
   const l = align(SHARED_A, SHARED_B, MATRICES.BLOSUM62, 11, "local", "protein_A", "protein_B");
   const box = $("lvgOut"); box.innerHTML = "";
-  box.appendChild(gbCard("Global: forced to line up the whole length", "bad", g));
-  box.appendChild(gbCard("Local: finds just the shared domain", "good", l));
+  box.appendChild(gbCard("Global: forced to line up the whole length", "bad", g, SHARED_A, SHARED_B));
+  box.appendChild(gbCard("Local: finds just the shared domain", "good", l, SHARED_A, SHARED_B));
 }
 
 /* ---------- gap tie demo ---------- */
