@@ -54,12 +54,18 @@ function renderAlignment(res, el, { width = 60, maxCols = 600 } = {}) {
   // it is in each sequence, so it does not look like the rest was "deleted".
   let header = "";
   if (res.mode && res.mode.indexOf("local") === 0 && total > 0) {
+    const l1 = res.len1 != null ? ` of ${res.len1}` : "";
+    const l2 = res.len2 != null ? ` of ${res.len2}` : "";
+    const trimmed = (res.start1 > 0 || res.end1 < (res.len1 ?? res.end1) || res.start2 > 0 || res.end2 < (res.len2 ?? res.end2));
     header = `<div style="font-family:-apple-system,'Segoe UI',Roboto,sans-serif;font-size:12.5px;`
       + `color:var(--muted);margin-bottom:8px;white-space:normal">`
-      + `<b>Local alignment</b> shows only the best-matching region, not the whole sequences. `
-      + `Match spans <b>${esc(res.name1)}</b> ${res.start1 + 1}–${res.end1} and `
-      + `<b>${esc(res.name2)}</b> ${res.start2 + 1}–${res.end2}. `
-      + `The rest is left out on purpose; switch to <b>Global</b> to line up the full sequences end to end.</div>`;
+      + `<b>Local alignment</b> shows only the highest-scoring region, not the whole sequences. `
+      + `Aligned <b>${esc(res.name1)}</b> ${res.start1 + 1}–${res.end1}${l1} and `
+      + `<b>${esc(res.name2)}</b> ${res.start2 + 1}–${res.end2}${l2}. `
+      + (trimmed
+          ? `Ends that would lower the score are trimmed (that is why it can be shorter than what you typed). `
+          : "")
+      + `Switch to <b>Global</b> to line up the full sequences end to end.</div>`;
   }
   // The number after each row is the RESIDUE POSITION reached in that sequence
   // (only non-gap letters count), starting from the local start offset. It is not

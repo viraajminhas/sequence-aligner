@@ -86,7 +86,7 @@ function align(seq1, seq2, sub, gap, mode = "global", name1 = "seq1", name2 = "s
   top.reverse(); bot.reverse();
   return {
     name1, name2, top: top.join(""), bottom: bot.join(""),
-    score, mode, gap, start1, end1, start2, end2,
+    score, mode, gap, start1, end1, start2, end2, len1: n, len2: m,
   };
 }
 
@@ -177,6 +177,7 @@ function alignAffine(seq1, seq2, sub, openPen, extendPen, mode = "global", name1
     name1, name2, top: top.join(""), bottom: bot.join(""),
     score, mode: local ? "local-affine" : "global-affine", gap: openPen,
     start1: local ? start1 : 0, end1: local ? bi : n, start2: local ? start2 : 0, end2: local ? bj : m,
+    len1: n, len2: m,
   };
 }
 
