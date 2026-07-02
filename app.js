@@ -50,6 +50,21 @@ function params() {
 function renderAlignment(res, el, { width = 60, maxCols = 600 } = {}) {
   const top = res.top, bot = res.bottom, total = top.length;
   const shown = Math.min(total, maxCols);
+  // Local alignment returns only the best-matching sub-region. Say so, and show WHERE
+  // it is in each sequence, so it does not look like the rest was "deleted".
+  let header = "";
+  if (res.mode && res.mode.indexOf("local") === 0 && total > 0) {
+    header = `<div style="font-family:-apple-system,'Segoe UI',Roboto,sans-serif;font-size:12.5px;`
+      + `color:var(--muted);margin-bottom:8px;white-space:normal">`
+      + `<b>Local alignment</b> shows only the best-matching region, not the whole sequences. `
+      + `Match spans <b>${esc(res.name1)}</b> ${res.start1 + 1}–${res.end1} and `
+      + `<b>${esc(res.name2)}</b> ${res.start2 + 1}–${res.end2}. `
+      + `The rest is left out on purpose; switch to <b>Global</b> to line up the full sequences end to end.</div>`;
+  }
+  // The number after each row is the RESIDUE POSITION reached in that sequence
+  // (only non-gap letters count), starting from the local start offset. It is not
+  // the alignment-column index, so it stays correct through gaps and for local hits.
+  let p1 = res.start1 || 0, p2 = res.start2 || 0;
   let html = "";
   for (let start = 0; start < shown; start += width) {
     const end = Math.min(start + width, shown);
@@ -63,25 +78,32 @@ function renderAlignment(res, el, { width = 60, maxCols = 600 } = {}) {
       t += `<span class="res ${cls}">${x}</span>`;
       b += `<span class="res ${cls}">${y}</span>`;
       mid += `<span class="mid">${m}</span>`;
+      if (x !== "-") p1++;
+      if (y !== "-") p2++;
     }
-    html += `<div class="block"><div>${t}<span class="coord">  ${end}</span></div>` +
-            `<div class="track">${mid}</div><div>${b}</div></div>`;
+    html += `<div class="block">` +
+            `<div>${t}<span class="coord" title="${esc(res.name1)} position">  ${p1}</span></div>` +
+            `<div class="track">${mid}</div>` +
+            `<div>${b}<span class="coord" title="${esc(res.name2)} position">  ${p2}</span></div>` +
+            `</div>`;
   }
   if (shown < total) html += `<div class="muted">… showing first ${shown} of ${total} columns (stats cover all ${total}).</div>`;
-  el.innerHTML = html || `<span class="muted">No alignment.</span>`;
+  el.innerHTML = header + (html || `<span class="muted">No alignment.</span>`);
 }
 
 function renderStats(res, el) {
   const s = alignmentStats(res);
   const cells = [
-    ["score", s.score.toFixed(1)],
-    ["identity", s.percentIdentity.toFixed(1) + "%"],
-    ["columns", s.columns],
-    ["mismatches", s.mismatches],
-    ["gaps", s.numGaps],
-    ["longest gap", s.longestGap],
+    ["score", s.score.toFixed(1), "reward for matches minus penalties for mismatches and gaps"],
+    ["identity (w/ gaps)", s.percentIdentity.toFixed(1) + "%", "matches / all columns; gaps count against it (BLAST / EMBOSS convention)"],
+    ["length", s.columns, "total columns in the alignment"],
+    ["mismatches", s.mismatches, "columns where two different residues line up"],
+    ["gaps", s.numGaps, "number of separate gaps (indel runs) across both rows"],
+    ["gap columns", s.gapColumns, "total dashed columns (sum of all gap lengths)"],
+    ["longest gap", s.longestGap, "length of the longest single gap"],
   ];
-  el.innerHTML = cells.map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
+  el.innerHTML = cells.map(([k, v, t]) =>
+    `<div class="stat" title="${t || ""}"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
 }
 
 /* ---------- the main compute ---------- */
@@ -218,8 +240,8 @@ function gbCard(title, tagClass, res) {
   div.innerHTML = `<span class="tag ${tagClass}">${title}</span>
     <div class="statgrid" style="grid-template-columns:repeat(3,1fr)">
       <div class="stat"><div class="k">score</div><div class="v">${s.score.toFixed(1)}</div></div>
-      <div class="stat"><div class="k">identity</div><div class="v">${s.percentIdentity.toFixed(1)}%</div></div>
-      <div class="stat"><div class="k">gaps</div><div class="v">${s.numGaps}</div></div>
+      <div class="stat" title="matches / all columns; gaps count against it"><div class="k">identity (w/ gaps)</div><div class="v">${s.percentIdentity.toFixed(1)}%</div></div>
+      <div class="stat" title="number of separate gaps (indel runs)"><div class="k">gaps</div><div class="v">${s.numGaps}</div></div>
     </div>
     <div class="aln" style="margin-top:12px"></div>`;
   renderAlignment(res, div.querySelector(".aln"), { maxCols: 240 });
@@ -266,8 +288,8 @@ function runSars() {
     $("sarsCallout").innerHTML = [
       [`${dSt.percentIdentity.toFixed(1)}%`, "DNA identity"],
       [`${pSt.percentIdentity.toFixed(1)}%`, "protein identity (more conserved than its own gene)"],
-      [`${Math.round(100 * synon / diff)}%`, "of differing codons are synonymous (protein unchanged)"],
-      [`${Math.round(100 * pos[2] / totpos)}%`, "of substitutions sit at the 3rd (wobble) position"],
+      [`${diff ? Math.round(100 * synon / diff) : 0}%`, "of differing codons are synonymous (protein unchanged)"],
+      [`${totpos ? Math.round(100 * pos[2] / totpos) : 0}%`, "of substitutions sit at the 3rd (wobble) position"],
     ].map(([n, t]) => `<div class="big"><div class="n">${n}</div><div class="t">${t}</div></div>`).join("");
 
     const mc = Math.max(identical, synon, missense);
