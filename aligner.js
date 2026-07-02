@@ -120,8 +120,11 @@ function alignAffine(seq1, seq2, sub, openPen, extendPen, mode = "global", name1
       let mij = s + Math.max(M[p], X[p], Y[p]);
       if (local && mij < 0) mij = 0;      // the 0-floor that makes it Smith-Waterman
       M[i * W + j] = mij;
-      X[i * W + j] = Math.max(M[(i - 1) * W + j] - openPen, X[(i - 1) * W + j] - extendPen);
-      Y[i * W + j] = Math.max(M[i * W + (j - 1)] - openPen, Y[i * W + (j - 1)] - extendPen);
+      // A gap may open from a match (M) OR from the opposite-direction gap (X<->Y),
+      // or extend the same-direction gap. Allowing the X<->Y switch is what makes this
+      // find the true optimum of the scoring function (and equal linear when open==extend).
+      X[i * W + j] = Math.max(M[(i - 1) * W + j] - openPen, X[(i - 1) * W + j] - extendPen, Y[(i - 1) * W + j] - openPen);
+      Y[i * W + j] = Math.max(M[i * W + (j - 1)] - openPen, Y[i * W + (j - 1)] - extendPen, X[i * W + (j - 1)] - openPen);
       if (local && mij > best) { best = mij; bi = i; bj = j; }
     }
   }
@@ -140,19 +143,29 @@ function alignAffine(seq1, seq2, sub, openPen, extendPen, mode = "global", name1
   const top = [], bot = [];
   while (i > 0 || j > 0) {
     if (local && state === "M" && M[i * W + j] === 0) break;   // reached the local start
+    if (local && state !== "M" && (i === 0 || j === 0)) break; // safety: never index past the ends
     if (state === "M") {
       top.push(seq1[i - 1]); bot.push(seq2[j - 1]);
       const p = (i - 1) * W + (j - 1);
       const mx = Math.max(M[p], X[p], Y[p]);
       i--; j--; state = mx === M[p] ? "M" : mx === X[p] ? "X" : "Y";
     } else if (state === "X") {
+      const cur = X[i * W + j];
       top.push(seq1[i - 1]); bot.push("-");
-      const opened = X[i * W + j] === M[(i - 1) * W + j] - openPen;
-      i--; state = opened ? "M" : "X";
+      // which predecessor produced this X cell: extend X, open from M, or switch from Y?
+      let ns;
+      if (cur === X[(i - 1) * W + j] - extendPen) ns = "X";
+      else if (cur === M[(i - 1) * W + j] - openPen) ns = "M";
+      else ns = "Y";
+      i--; state = ns;
     } else {
+      const cur = Y[i * W + j];
       top.push("-"); bot.push(seq2[j - 1]);
-      const opened = Y[i * W + j] === M[i * W + (j - 1)] - openPen;
-      j--; state = opened ? "M" : "Y";
+      let ns;
+      if (cur === Y[i * W + (j - 1)] - extendPen) ns = "Y";
+      else if (cur === M[i * W + (j - 1)] - openPen) ns = "M";
+      else ns = "X";
+      j--; state = ns;
     }
     if (!local && i === 0 && j === 0) break;
     if (!local && i === 0 && j > 0) { while (j > 0) { top.push("-"); bot.push(seq2[j - 1]); j--; } break; }
