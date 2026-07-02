@@ -302,13 +302,21 @@ function runSars() {
     const dSt = alignmentStats(dna), pSt = alignmentStats(prot);
 
     let c1 = 0, c2 = 0, identical = 0, synon = 0, missense = 0, indel = 0, pos = [0, 0, 0];
+    let synEx = null, misEx = null;   // one real single-base example of each, for the visual
     for (let k = 0; k < prot.top.length; k++) {
       const x = prot.top[k], y = prot.bottom[k];
       if (x !== "-" && y !== "-") {
         const cod1 = SEQS.sars1DNA.substr(3 * c1, 3), cod2 = SEQS.sars2DNA.substr(3 * c2, 3);
+        const diffs = [];
+        for (let q = 0; q < 3; q++) if (cod1[q] !== cod2[q]) diffs.push(q);
         if (x === y && cod1 === cod2) identical++;
-        else if (x === y) { synon++; for (let q = 0; q < 3; q++) if (cod1[q] !== cod2[q]) pos[q]++; }
-        else { missense++; for (let q = 0; q < 3; q++) if (cod1[q] !== cod2[q]) pos[q]++; }
+        else if (x === y) {
+          synon++; for (const q of diffs) pos[q]++;
+          if (!synEx && diffs.length === 1) synEx = { res: c2 + 1, a: cod1, b: cod2, aa: x, diff: diffs[0] };
+        } else {
+          missense++; for (const q of diffs) pos[q]++;
+          if (!misEx && diffs.length === 1) misEx = { res: c2 + 1, a: cod1, b: cod2, aa1: x, aa2: y, diff: diffs[0] };
+        }
         c1++; c2++;
       } else if (x !== "-") { c1++; indel++; } else { c2++; indel++; }
     }
@@ -332,9 +340,60 @@ function runSars() {
       bar("2nd", pos[1], mp, "#8593a1") +
       bar("3rd (wobble)", pos[2], mp, "#2b8cbe");
 
+    renderCodonDemo(synEx, misEx);
+
     $("sarsOut").classList.remove("hidden");
     $("sarsRun").textContent = "Re-run the analysis ▶"; $("sarsRun").disabled = false;
   }, 20);
+}
+
+/* ---------- codon visualization: a real synonymous (and missense) example ---------- */
+const AA3 = { A: "Ala", R: "Arg", N: "Asn", D: "Asp", C: "Cys", Q: "Gln", E: "Glu", G: "Gly",
+  H: "His", I: "Ile", L: "Leu", K: "Lys", M: "Met", F: "Phe", P: "Pro", S: "Ser", T: "Thr",
+  W: "Trp", Y: "Tyr", V: "Val", "*": "Stop" };
+
+function codonBox(codon, diff) {
+  return `<span class="cbox">` + [...codon].map((n, i) =>
+    `<span class="nt${i === diff ? " diff" : ""}">${n}</span>`).join("") + `</span>`;
+}
+function codonRow(virus, codon, diff, aa, aaClass) {
+  return `<div class="clab">${virus}</div>` +
+    `<div>${codonBox(codon, diff)}</div>` +
+    `<div class="carrow">&rarr;</div>` +
+    `<div><span class="aachip ${aaClass}">${AA3[aa] || "?"} (${aa})</span></div>`;
+}
+function renderCodonDemo(synEx, misEx) {
+  const el = $("codonDemo");
+  if (!el) return;
+  let html = "";
+  if (synEx) {
+    html += `<div class="card codoncard">
+      <div class="kicker" style="color:var(--match)">A real synonymous (silent) mutation</div>
+      <p class="muted" style="margin:4px 0 12px">At <b>codon ${synEx.res}</b> of the spike gene one DNA letter differs between the
+        two viruses, yet both codons still spell the same amino acid. The boxed codon changes, but the protein does not.</p>
+      <div class="codongrid">
+        ${codonRow("SARS-CoV (2003)", synEx.a, synEx.diff, synEx.aa, "m")}
+        ${codonRow("SARS-CoV-2 (2020)", synEx.b, synEx.diff, synEx.aa, "m")}
+      </div>
+      <div class="verdict same">Base ${synEx.diff + 1} of the codon changed (<b>${synEx.a[synEx.diff]} &rarr; ${synEx.b[synEx.diff]}</b>),
+        but both <b>${synEx.a}</b> and <b>${synEx.b}</b> code for <b>${AA3[synEx.aa]} (${synEx.aa})</b>. The DNA mutation is
+        <b>invisible in the protein</b>: a synonymous, silent change.</div>
+    </div>`;
+  }
+  if (misEx) {
+    html += `<div class="card codoncard" style="margin-top:14px">
+      <div class="kicker" style="color:var(--mismatch)">For contrast: a missense mutation</div>
+      <p class="muted" style="margin:4px 0 12px">At <b>codon ${misEx.res}</b> a single DNA change <i>does</i> swap the amino acid, so it shows up in the protein.</p>
+      <div class="codongrid">
+        ${codonRow("SARS-CoV (2003)", misEx.a, misEx.diff, misEx.aa1, "x")}
+        ${codonRow("SARS-CoV-2 (2020)", misEx.b, misEx.diff, misEx.aa2, "x")}
+      </div>
+      <div class="verdict diff">Base ${misEx.diff + 1} changed (<b>${misEx.a[misEx.diff]} &rarr; ${misEx.b[misEx.diff]}</b>), and this time
+        the amino acid changed too: <b>${AA3[misEx.aa1]} (${misEx.aa1})</b> to <b>${AA3[misEx.aa2]} (${misEx.aa2})</b>. A missense
+        mutation, visible in both the gene and the protein.</div>
+    </div>`;
+  }
+  el.innerHTML = html;
 }
 
 /* ---------- quality demo: same alignment, different scores ---------- */

@@ -172,6 +172,21 @@ ul.blist > li { margin-bottom: 8px; line-height: 1.55; }
   .bars { gap: 12px; }
 }
 
+/* codon (synonymous / missense) visualization */
+.codoncard .codongrid { display: grid; grid-template-columns: auto auto auto 1fr; gap: 10px 16px; align-items: center; }
+@media (max-width: 560px) { .codoncard .codongrid { grid-template-columns: auto auto auto; } }
+.codoncard .clab { font-weight: 600; font-size: 13px; color: var(--muted); }
+.cbox { display: inline-flex; gap: 3px; border: 2px solid var(--accent); border-radius: 8px; padding: 4px 6px; background: var(--panel-2); }
+.cbox .nt { font-family: var(--mono); font-size: 17px; font-weight: 700; min-width: 1.05em; text-align: center; color: var(--ink); border-radius: 3px; }
+.cbox .nt.diff { background: var(--mismatch); color: #fff; }
+.codoncard .carrow { color: var(--muted); font-size: 18px; text-align: center; }
+.aachip { display: inline-block; font-weight: 700; padding: 4px 12px; border-radius: 999px; font-size: 14px; }
+.aachip.m { background: color-mix(in srgb, var(--match) 18%, transparent); color: var(--match); }
+.aachip.x { background: color-mix(in srgb, var(--mismatch) 18%, transparent); color: var(--mismatch); }
+.verdict { margin-top: 12px; font-size: 13.5px; line-height: 1.5; padding: 10px 14px; border-radius: 8px; }
+.verdict.same { background: color-mix(in srgb, var(--match) 12%, transparent); border-left: 3px solid var(--match); }
+.verdict.diff { background: color-mix(in srgb, var(--mismatch) 12%, transparent); border-left: 3px solid var(--mismatch); }
+
 dl.glossary { margin: 0; }
 dl.glossary dt { font-weight: 700; margin-top: 12px; }
 dl.glossary dt:first-child { margin-top: 0; }
